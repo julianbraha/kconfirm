@@ -37,17 +37,38 @@ struct Args {
     check_dead_links: bool,
 }
 
-fn main() -> io::Result<()> {
-    env_logger::init();
-    let cli_args = Args::parse();
-    let analysis_args = AnalysisArgs {
-        check_style: cli_args.check_style,
-        check_dead_links: cli_args.check_dead_links,
-    };
+// each architecture has its own directory, and config option.
+// most are the same, but powerpc / ppc is not.
+// this maps the directory to the config option
+fn arch_dir_to_config(arch_dir: &str) -> Option<&'static str> {
+    match arch_dir {
+        "ARM" => Some("ARM"),
+        "ARM64" => Some("ARM64"),
+        "X86" => Some("X86"),
+        "RISCV" => Some("RISCV"),
+        "MIPS" => Some("MIPS"),
+        "XTENSA" => Some("XTENSA"),
+        "SPARC" => Some("SPARC"),
+        "ALPHA" => Some("ALPHA"),
+        "ARC" => Some("ARC"),
+        "CSKY" => Some("CSKY"),
+        "HEXAGON" => Some("HEXAGON"),
+        "LOONGARCH" => Some("LOONGARCH"),
+        "M68K" => Some("M68K"),
+        "MICROBLAZE" => Some("MICROBLAZE"),
+        "NIOS2" => Some("NIOS2"),
+        "OPENRISC" => Some("OPENRISC"),
+        "PARISC" => Some("PARISC"),
+        "POWERPC" => Some("PPC"),
+        "S390" => Some("S390"),
+        "SH" => Some("SH"),
+        "UM" => Some("UML"),
 
-    let linux_source = cli_args.linux_path;
-    let check_for_duplicate_default_vals = cli_args.check_style;
+        _ => None,
+    }
+}
 
+fn check_kconfig(args: AnalysisArgs, linux_source: PathBuf) -> io::Result<Vec<Finding>> {
     // will store detected kconfig issues,to be printed one line at a time at the end
     let mut findings = Vec::new();
 
@@ -56,11 +77,7 @@ fn main() -> io::Result<()> {
     let root_linux = linux_source.clone();
 
     let arch_dir_path = {
-        let arch_dir = {
-            let mut s = linux_source.to_string_lossy().to_string();
-            s.push_str("/arch/");
-            s
-        };
+        let arch_dir = linux_source.join("arch");
         PathBuf::from(arch_dir)
     };
 
@@ -107,31 +124,7 @@ fn main() -> io::Result<()> {
                 std::path::Component::Normal(n) => {
                     let arch_dir = n.to_ascii_uppercase().into_string().unwrap();
                     debug!("arch_dir: {}", arch_dir);
-                    match arch_dir.as_str() {
-                        "ARM" => Some("ARM"),
-                        "ARM64" => Some("ARM64"),
-                        "X86" => Some("X86"),
-                        "RISCV" => Some("RISCV"),
-                        "MIPS" => Some("MIPS"),
-                        "XTENSA" => Some("XTENSA"),
-                        "SPARC" => Some("SPARC"),
-                        "ALPHA" => Some("ALPHA"),
-                        "ARC" => Some("ARC"),
-                        "CSKY" => Some("CSKY"),
-                        "HEXAGON" => Some("HEXAGON"),
-                        "LOONGARCH" => Some("LOONGARCH"),
-                        "M68K" => Some("M68K"),
-                        "MICROBLAZE" => Some("MICROBLAZE"),
-                        "NIOS2" => Some("NIOS2"),
-                        "OPENRISC" => Some("OPENRISC"),
-                        "PARISC" => Some("PARISC"),
-                        "POWERPC" => Some("PPC"),
-                        "S390" => Some("S390"),
-                        "SH" => Some("SH"),
-                        "UM" => Some("UML"),
-
-                        _ => None,
-                    }
+                    arch_dir_to_config(&arch_dir)
                 }
                 _ => unreachable!(),
             };
@@ -142,7 +135,7 @@ fn main() -> io::Result<()> {
                 ))));
                 for entry in entries {
                     let cur_findings = entry_processor(
-                        &analysis_args,
+                        &args,
                         &mut symbol_table,
                         entry,
                         Vec::new(),
@@ -156,7 +149,7 @@ fn main() -> io::Result<()> {
             } else {
                 for entry in entries {
                     let cur_findings = entry_processor(
-                        &analysis_args,
+                        &args,
                         &mut symbol_table,
                         entry,
                         Vec::new(),
@@ -181,7 +174,7 @@ fn main() -> io::Result<()> {
 
         for entry in entries {
             let cur_findings = entry_processor(
-                &analysis_args,
+                &args,
                 &mut symbol_table,
                 entry,
                 Vec::new(),
@@ -306,7 +299,7 @@ fn main() -> io::Result<()> {
                     });
                 }
 
-                if check_for_duplicate_default_vals {
+                if args.check_style {
                     let default_val = default_and_if.expression.to_string();
                     if all_default_vals.contains(&default_val) {
                         findings.push(Finding {
@@ -345,7 +338,10 @@ fn main() -> io::Result<()> {
             }
         }
     }
+    Ok(findings)
+}
 
+fn print_findings(mut findings: Vec<Finding>) {
     findings.sort_by(|a, b| {
         (&a.severity, &a.check, &a.symbol).cmp(&(&b.severity, &b.check, &b.symbol))
     });
@@ -353,6 +349,20 @@ fn main() -> io::Result<()> {
     for f in &findings {
         println!("{}", f);
     }
+}
+
+fn main() -> io::Result<()> {
+    env_logger::init();
+    let cli_args = Args::parse();
+    let analysis_args = AnalysisArgs {
+        check_style: cli_args.check_style,
+        check_dead_links: cli_args.check_dead_links,
+    };
+
+    let linux_source = cli_args.linux_path;
+
+    let findings = check_kconfig(analysis_args, linux_source)?;
+    print_findings(findings);
 
     Ok(())
 }
