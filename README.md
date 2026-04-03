@@ -7,10 +7,12 @@ A static analysis tool for the Kconfig language.
 
 Detect dead code, dead links in help texts, and more. Unmet dependency detection (inspired by [kismet](https://dl.acm.org/doi/pdf/10.1145/3468264.3468578)) is in development. This uses SMT instead of SAT, to reduce false negatives and false positives.
 
-## Bugs Found
+# Submitted Patches
+
+## Unmet Dependency Bugs
 [2026-03-25 "ASoC: Intel: boards: fix unmet dependency on PINCTRL"](https://lore.kernel.org/all/20260325001522.1727678-1-julianbraha@gmail.com/)
 
-## Dead Code Found
+## Dead Code
 
 [2026-04-02 "stmmac: cleanup dead dependencies on STMMAC_PLATFORM and STMMAC_ETH in Kconfig"](https://lore.kernel.org/all/20260402145858.240231-1-julianbraha@gmail.com/)
 
@@ -40,7 +42,28 @@ Detect dead code, dead links in help texts, and more. Unmet dependency detection
 
 [2026-03-09 "serial: remove drivers for espressif esp32"](https://lore.kernel.org/all/20260309122321.1528622-1-julianbraha@gmail.com/)
 
+# Usage
+
+Assuming you have Rust installed:
+```
+# clone this repo
+git clone https://github.com/julianbraha/kconfirm.git
+
+cd kconfirm
+
+# compile
+cargo build --release
+
+# run
+./target/release/kconfirm --linux-path RELATIVE_PATH_TO_LINUX_SOURCE
+```
+
+To enable the check for dead links in the Kconfig `help` texts:
+```
+# NOTE: this is very slow! It will attempt to visit every link that it finds!
+./target/release/kconfirm --linux-path RELATIVE_PATH_TO_LINUX_SOURCE --check-dead-links
+```
+
 ## Special Thanks
 - [Yann Prono "Mcdostone"](https://mcdostone.github.io/) for building the [nom-kconfig](https://github.com/Mcdostone/nom-kconfig) crate for parsing `kconfig`, and continuing to support it.
 - [Necip Fazil Yildiran](https://github.com/necipfazil), [Jeho Oh](https://github.com/jeho-oh), and [Paul Gazzillo](https://paulgazzillo.com/) for introducing me to the unmet dependency bug, and for their mentorship.
-
