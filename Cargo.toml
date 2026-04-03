@@ -1,0 +1,18 @@
+[package]
+name = "kconfirm"
+repository = "https://github.com/julianbraha/kconfirm"
+license-file = "LICENSE"
+keywords = ["kconfig", "static", "analysis", "detect"]
+categories = ["development-tools", "config", "command-line-utilities"]
+exclude = ["assets/"]
+version = "0.5.0"
+edition = "2024"
+
+[dependencies]
+clap = { version = "4.6.0", features = ["derive"] }
+log = "0.4.29"
+env_logger = "0.11.10"
+nom-kconfig = "0.7.0"
+walkdir = "2"
+regex = "1.12.3"
+reqwest = {version = "0.13.2", features = ["blocking"] }
