@@ -3,17 +3,33 @@ use regex::Regex;
 use reqwest::blocking::Client;
 use std::time::Duration;
 
+/*
+ * during testing, "Unreachable" and "ServerError" seem to be a 50/50
+ * as to whether or not they're actually dead links
+ */
 #[derive(PartialEq, Debug)]
 pub enum LinkStatus {
-    Ok,                  // 2xx, definitely alive
-    ProbablyBlocked,     // 403, 429, or cloudflare-style response
-    Redirected(String),  // 301/302, redirection, consider updating the link
-    NotFound,            // 404, probably dead
-    ServerError,         // 5xx, might be temporary
-    Unreachable(String), // connection failed, timeout, DNS error etc.
+    Ok,                        // 2xx, definitely alive
+    ProbablyBlocked,           // 403, 429, or cloudflare-style response
+    Redirected(String),        // 301/302, redirection, consider updating the link
+    NotFound,                  // 404, probably dead
+    ServerError,               // 5xx, might be temporary
+    Unreachable(String),       // connection failed, timeout, DNS error etc.
+    UnsupportedScheme(String), // e.g. ftp, git
 }
 
 pub fn check_link(url: &str) -> LinkStatus {
+    if let Some(scheme) = url.split("://").next() {
+        match scheme {
+            "http" | "https" => return check_http(url),
+            "git" | "ftp" | _ => return LinkStatus::UnsupportedScheme(scheme.into()),
+        }
+    }
+
+    LinkStatus::Unreachable("invalid URL".into())
+}
+
+fn check_http(url: &str) -> LinkStatus {
     let client = Client::builder()
         .timeout(Duration::from_secs(10))
         .build()
@@ -34,7 +50,7 @@ pub fn check_link(url: &str) -> LinkStatus {
             403 | 429 => LinkStatus::ProbablyBlocked,
             404 => LinkStatus::NotFound,
             500..=599 => LinkStatus::ServerError,
-            _ => LinkStatus::ProbablyBlocked, // e.g. 503 cloudflare
+            _ => LinkStatus::ProbablyBlocked,
         },
         Err(e) => LinkStatus::Unreachable(e.to_string()),
     }
