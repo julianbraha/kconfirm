@@ -3,7 +3,7 @@ use std::fmt;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Severity {
-    Error,
+    Error, // will be used for known bugs, e.g. unmet dependencies
     Warning,
     Style,
 }
