@@ -12,7 +12,15 @@ Detect dead code, dead links in help texts, and more. Unmet dependency detection
 ## Unmet Dependency Bugs
 [2026-03-25 "ASoC: Intel: boards: fix unmet dependency on PINCTRL"](https://lore.kernel.org/all/20260325001522.1727678-1-julianbraha@gmail.com/)
 
-## Dead Code
+## Dead Defaults
+
+[2026-03-23 "drm: fix dead default for DRM_TTM_KUNIT_TEST"](https://lore.kernel.org/all/20260323124118.1414913-1-julianbraha@gmail.com/)
+
+[2026-03-23 "s390: fix dead defaults for S390_MODULES_SANITY_TEST and S390_UNWIND_SELFTEST"](https://lkml.org/lkml/2026/3/23/1056)
+
+[2026-03-22 "soc: aspeed: cleanup dead default for ASPEED_SOCINFO"](https://lkml.org/lkml/2026/3/22/591)
+
+## Duplicate Dependencies
 
 [2026-04-02 "stmmac: cleanup dead dependencies on STMMAC_PLATFORM and STMMAC_ETH in Kconfig"](https://lore.kernel.org/all/20260402145858.240231-1-julianbraha@gmail.com/)
 
@@ -34,11 +42,7 @@ Detect dead code, dead links in help texts, and more. Unmet dependency detection
 
 [2026-03-29 "ARM: omap2: dead code cleanup in kconfig for ARCH_OMAP4"](https://lore.kernel.org/all/20260329183018.519560-1-julianbraha@gmail.com/)
 
-[2026-03-23 "drm: fix dead default for DRM_TTM_KUNIT_TEST"](https://lore.kernel.org/all/20260323124118.1414913-1-julianbraha@gmail.com/)
-
-[2026-03-23 "s390: fix dead defaults for S390_MODULES_SANITY_TEST and S390_UNWIND_SELFTEST"](https://lkml.org/lkml/2026/3/23/1056)
-
-[2026-03-22 "soc: aspeed: cleanup dead default for ASPEED_SOCINFO"](https://lkml.org/lkml/2026/3/22/591)
+## Dead Configuration Options
 
 [2026-03-09 "serial: remove drivers for espressif esp32"](https://lore.kernel.org/all/20260309122321.1528622-1-julianbraha@gmail.com/)
 
