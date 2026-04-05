@@ -2,9 +2,10 @@
 name = "kconfirm"
 repository = "https://github.com/julianbraha/kconfirm"
 license-file = "LICENSE"
+description = "A static analysis tool for Kconfig"
 keywords = ["kconfig", "static", "analysis", "detect"]
 categories = ["development-tools", "config", "command-line-utilities"]
-exclude = ["assets/"]
+exclude = ["assets/", "findings/"]
 version = "0.5.0"
 edition = "2024"
 
