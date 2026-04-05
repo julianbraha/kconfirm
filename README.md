@@ -46,6 +46,12 @@ Detect dead code, dead links in help texts, and more. Unmet dependency detection
 
 [2026-03-09 "serial: remove drivers for espressif esp32"](https://lore.kernel.org/all/20260309122321.1528622-1-julianbraha@gmail.com/)
 
+## Known Dead Links
+
+Linux 7.0-rc6 has 86 known dead links in the Kconfig help texts, hand-checked from kconfirm's results.
+
+See [findings/dead_links_7_0_rc6.txt](/findings/dead_links_7_0_rc6.txt)
+
 # Usage
 
 Assuming you have Rust installed:
