@@ -323,20 +323,22 @@ pub fn entry_processor(
             // TODO: are links allowed in these comments? they don't seem to be used right now.
         }
         Source(s) => {
-            let cur_entries = s.entries;
+            let sourced_kconfig = s.entries;
 
-            for inner_entry in cur_entries {
-                let cur_findings = entry_processor(
-                    args,
-                    symbol_table,
-                    inner_entry,
-                    cur_definedness_condition.clone(),
-                    cur_visibility_condition.clone(),
-                    cur_dependencies.clone(),
-                    is_in_a_choice,
-                );
+            for entry in sourced_kconfig {
+                for inner_entry in entry.entries {
+                    let cur_findings = entry_processor(
+                        args,
+                        symbol_table,
+                        inner_entry,
+                        cur_definedness_condition.clone(),
+                        cur_visibility_condition.clone(),
+                        cur_dependencies.clone(),
+                        is_in_a_choice,
+                    );
 
-                findings.extend(cur_findings);
+                    findings.extend(cur_findings);
+                }
             }
         }
 
