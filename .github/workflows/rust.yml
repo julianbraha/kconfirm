@@ -7,12 +7,14 @@ on:
       - '.github/**'
       - 'README.md'
       - 'assets/**'
+      - 'findings/**'
   pull_request:
     branches: [ "main" ]
     paths-ignore:
       - '.github/**'
       - 'README.md'
       - 'assets/**'
+      - 'findings/**'
 
 env:
   CARGO_TERM_COLOR: always
