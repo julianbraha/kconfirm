@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/kconfirm.svg" alt="Project Logo" width="200">
+  <img src="assets/kconfirm.png" alt="Project Logo" width="200">
 </div>
 
 # kconfirm
