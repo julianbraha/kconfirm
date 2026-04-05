@@ -48,7 +48,7 @@ Detect dead code, dead links in help texts, and more. Unmet dependency detection
 
 ## Known Dead Links
 
-Linux 7.0-rc6 has 86 known dead links in the Kconfig help texts, hand-checked from kconfirm's results.
+Linux 7.0-rc6 has 82 known, unique dead links in the Kconfig help texts, hand-checked from kconfirm's results.
 
 See [findings/dead_links_7_0_rc6.txt](/findings/dead_links_7_0_rc6.txt)
 
