@@ -263,7 +263,10 @@ pub fn check_kconfig(args: AnalysisArgs, linux_source: PathBuf) -> io::Result<Ve
                         severity: Severity::Warning,
                         check: "dead_default",
                         symbol: Some(var_symbol.clone()),
-                        message: "dead default".to_string(),
+                        message: format!(
+                            "dead default of {}",
+                            default_and_if.expression.to_string()
+                        ),
                     });
                 }
 
