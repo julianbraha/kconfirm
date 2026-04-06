@@ -164,10 +164,10 @@ pub fn check_kconfig(args: AnalysisArgs, linux_source: PathBuf) -> io::Result<Ve
         let var_symbol = type_info_ref.0;
         all_vars.push(var_symbol.clone());
 
-        for kconfig_redefinition in type_info_ref.1.clone().variable_info {
+        for kconfig_redefinition in &type_info_ref.1.variable_info {
             let mut all_dependencies =
                 HashSet::with_capacity(kconfig_redefinition.kconfig_dependencies.len());
-            for dep in kconfig_redefinition.kconfig_dependencies {
+            for dep in &kconfig_redefinition.kconfig_dependencies {
                 let dep_str = dep.to_string();
                 if all_dependencies.contains(&dep_str) {
                     findings.push(Finding {
@@ -185,7 +185,7 @@ pub fn check_kconfig(args: AnalysisArgs, linux_source: PathBuf) -> io::Result<Ve
 
             // TODO: consider an optional check for multiple ranges of the same value, but different conditions (style lint)
             let mut already_unconditional_range = false;
-            for range in kconfig_redefinition.kconfig_ranges {
+            for range in &kconfig_redefinition.kconfig_ranges {
                 // check for ranges that follow and unconditional one
                 if already_unconditional_range {
                     findings.push(Finding {
@@ -218,9 +218,9 @@ pub fn check_kconfig(args: AnalysisArgs, linux_source: PathBuf) -> io::Result<Ve
             let mut all_selects = HashSet::with_capacity(kconfig_redefinition.selects.len());
 
             // TODO: cleanup this code (especially the clones, and the if-handling)
-            for select in kconfig_redefinition.selects {
+            for select in &kconfig_redefinition.selects {
                 let select_var = select.clone().0;
-                if let Some(select_cond) = select.clone().1 {
+                if let Some(select_cond) = &select.1 {
                     if all_selects.contains(&(select_var.clone(), select_cond.to_string())) {
                         findings.push(Finding {
                             severity: Severity::Warning,
@@ -257,7 +257,7 @@ pub fn check_kconfig(args: AnalysisArgs, linux_source: PathBuf) -> io::Result<Ve
             // only used when style checks are enabled, consider wrapping this in Option
             let mut all_default_vals = HashSet::new();
 
-            for default_and_if in kconfig_redefinition.kconfig_defaults {
+            for default_and_if in &kconfig_redefinition.kconfig_defaults {
                 if already_unconditional_default {
                     findings.push(Finding {
                         severity: Severity::Warning,
@@ -284,10 +284,10 @@ pub fn check_kconfig(args: AnalysisArgs, linux_source: PathBuf) -> io::Result<Ve
                     }
                 }
 
-                let default_cond = default_and_if.r#if;
+                let default_cond = &default_and_if.r#if;
 
                 // TODO: can we use a reference to default_cond?
-                if let Some(d) = default_cond.clone() {
+                if let Some(d) = default_cond {
                     // OrExpression doesn't implement `Eq` so we convert it to a string first.
                     if all_default_ifs.contains(&(d.to_string())) {
                         findings.push(Finding {
