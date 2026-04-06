@@ -168,16 +168,13 @@ pub fn check_kconfig(args: AnalysisArgs, linux_source: PathBuf) -> io::Result<Ve
             let mut all_dependencies =
                 HashSet::with_capacity(kconfig_redefinition.kconfig_dependencies.len());
             for dep in &kconfig_redefinition.kconfig_dependencies {
-                let dep_str = dep.to_string();
-                if all_dependencies.contains(&dep_str) {
+                if is_duplicate(&mut all_dependencies, dep.to_string()) {
                     findings.push(Finding {
                         severity: Severity::Warning,
                         check: "duplicate_dependency",
                         symbol: Some(var_symbol.clone()),
-                        message: format!("duplicate dependency on {:?}", dep_str),
+                        message: format!("duplicate dependency on {:?}", dep.to_string()),
                     });
-                } else {
-                    all_dependencies.insert(dep_str);
                 }
             }
 
@@ -198,15 +195,13 @@ pub fn check_kconfig(args: AnalysisArgs, linux_source: PathBuf) -> io::Result<Ve
 
                 // check for multiple ranges with the same condition
                 if let Some(f) = range.r#if.clone() {
-                    if all_range_conditions.contains(&f.to_string()) {
+                    if is_duplicate(&mut all_range_conditions, f.to_string()) {
                         findings.push(Finding {
                             severity: Severity::Warning,
                             check: "dead_range",
                             symbol: Some(var_symbol.clone()),
                             message: format!("dead range of {:?}", range),
                         });
-                    } else {
-                        all_range_conditions.insert(f.to_string());
                     }
                 }
 
@@ -221,30 +216,27 @@ pub fn check_kconfig(args: AnalysisArgs, linux_source: PathBuf) -> io::Result<Ve
             for select in &kconfig_redefinition.selects {
                 let select_var = select.clone().0;
                 if let Some(select_cond) = &select.1 {
-                    if all_selects.contains(&(select_var.clone(), select_cond.to_string())) {
+                    if is_duplicate(&mut all_selects, (select_var, select_cond.to_string())) {
                         findings.push(Finding {
                             severity: Severity::Warning,
                             check: "duplicate_select",
                             symbol: Some(var_symbol.clone()),
                             message: format!("duplicate select of {:?}", select),
                         });
-                    } else {
-                        all_selects.insert((select_var, select_cond.to_string()));
                     }
                 } else {
                     // style check:
                     //       - select X if Y
                     //       - select X if Z
                     //         (could just be `select X if Y || Z`)
-                    if all_selects.contains(&(select_var.clone(), String::new())) {
+
+                    if is_duplicate(&mut all_selects, (select_var, String::new())) {
                         findings.push(Finding {
                             severity: Severity::Warning,
                             check: "duplicate_select",
                             symbol: Some(var_symbol.clone()),
                             message: format!("duplicate select of {:?}", select),
                         });
-                    } else {
-                        all_selects.insert((select_var, String::new()));
                     }
                 }
             }
@@ -272,15 +264,14 @@ pub fn check_kconfig(args: AnalysisArgs, linux_source: PathBuf) -> io::Result<Ve
 
                 if args.check_style {
                     let default_val = default_and_if.expression.to_string();
-                    if all_default_vals.contains(&default_val) {
+
+                    if is_duplicate(&mut all_default_vals, default_val.to_string()) {
                         findings.push(Finding {
                             severity: Severity::Style,
                             check: "duplicate_default_value",
                             symbol: Some(var_symbol.clone()),
                             message: format!("duplicate default value of {:?}", default_val),
                         });
-                    } else {
-                        all_default_vals.insert(default_and_if.expression.to_string());
                     }
                 }
 
@@ -289,15 +280,14 @@ pub fn check_kconfig(args: AnalysisArgs, linux_source: PathBuf) -> io::Result<Ve
                 // TODO: can we use a reference to default_cond?
                 if let Some(d) = default_cond {
                     // OrExpression doesn't implement `Eq` so we convert it to a string first.
-                    if all_default_ifs.contains(&(d.to_string())) {
+
+                    if is_duplicate(&mut all_default_ifs, d.to_string()) {
                         findings.push(Finding {
                             severity: Severity::Warning,
                             check: "duplicate_default",
                             symbol: Some(var_symbol.clone()),
                             message: format!("duplicate default condition of {:?}", d),
                         });
-                    } else {
-                        all_default_ifs.insert(d.to_string());
                     }
                 }
 
