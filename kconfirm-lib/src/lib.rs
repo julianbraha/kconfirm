@@ -7,25 +7,18 @@ use symbol_table::*;
 
 mod dead_links;
 
-mod linux;
-use linux::*;
-
 mod analyze;
 use analyze::*;
 
-use log::{debug, error, info};
+use log::{error, info};
 use nom_kconfig::Entry;
 use nom_kconfig::Symbol;
 use nom_kconfig::attribute::AndExpression;
 use nom_kconfig::attribute::Atom;
 use nom_kconfig::attribute::Expression;
 use nom_kconfig::attribute::Term;
-use nom_kconfig::{KconfigFile, KconfigInput, parse_kconfig};
+use nom_kconfig::{KconfigInput, parse_kconfig};
 use std::collections::HashSet;
-use std::fs::File;
-use std::io;
-use std::io::Read;
-use std::path::PathBuf;
 
 #[derive(Clone)]
 pub struct AnalysisArgs {
@@ -36,124 +29,64 @@ pub struct AnalysisArgs {
     pub check_dead_links: bool,
 }
 
-pub fn check_kconfig(args: AnalysisArgs, linux_source: PathBuf) -> io::Result<Vec<Finding>> {
-    // will store detected kconfig issues,to be printed one line at a time at the end
+// TODO: caller of check_kconfig makes this call:
+//
+//  `let kconfig_files = collect_kconfig_root_files(linux_root);`
+
+pub fn check_kconfig(
+    args: AnalysisArgs,
+    kconfig_files: Vec<(Option<String>, KconfigInput)>, // for linux, the config options in the kconfig file all depend on the architecture's config option
+) -> Vec<Finding> {
+    // will store detected kconfig issues, to be printed one line at a time at the end
     let mut findings = Vec::new();
 
     let mut symbol_table = SymbolTable::new();
 
-    let root_linux = linux_source.clone();
+    for (arch_config_option, kconfig_file) in kconfig_files {
+        let kconfig_parse_result = parse_kconfig(kconfig_file);
 
-    let arch_dir_path = {
-        let arch_dir = linux_source.join("arch");
-        PathBuf::from(arch_dir)
-    };
+        // process the kconfig entries that we parsed from the root kconfig file:
+        if let Ok(parsed_kconfig_file) = kconfig_parse_result {
+            let entries: Vec<Entry> = parsed_kconfig_file.1.entries;
 
-    for entry in walkdir::WalkDir::new(arch_dir_path)
-        .into_iter()
-        .filter_map(Result::ok)
-        .filter(|e| e.file_type().is_file())
-    {
-        let path = entry.path();
+            match arch_config_option {
+                Some(aco) => {
+                    let arch_config_option_expression = Expression::Term(AndExpression::Term(
+                        Term::Atom(Atom::Symbol(Symbol::NonConstant(aco.to_owned()))),
+                    ));
+                    info!("aco: {}", aco);
+                    for entry in entries {
+                        let cur_findings = entry_processor(
+                            &args,
+                            &mut symbol_table,
+                            entry,
+                            Vec::new(),
+                            Vec::new(),
+                            Vec::from([arch_config_option_expression.clone()]), // every config option in the arch kconfig file depends on the arch config option
+                            false, // we don't start in a choice.
+                        );
 
-        if path
-            .file_name()
-            .and_then(|s| s.to_str())
-            .map(|ext| ext.starts_with("Kconfig")) // was .eq() but we need e.g. arch/arm64/Kconfig.platforms
-            .unwrap_or(false)
-        {
-            if path.components().any(|component| {
-                component
-                    .as_os_str()
-                    .to_str()
-                    .is_some_and(|s| s == "scripts" || s == "tools")
-            }) {
-                info!("NOTE: skipping the scripts dir for now...");
-                continue;
-            }
-            let mut file = File::open(path)?;
-            let mut contents = String::new();
-            file.read_to_string(&mut contents)?;
-
-            debug!("Opening: {}", path.display());
-
-            //let linux_root = PathBuf::from(LINUX_SOURCE);
-
-            let path_no_root = path.strip_prefix(&root_linux).unwrap();
-
-            let cur_kconfig_file =
-                KconfigFile::new(root_linux.clone(), PathBuf::from(path_no_root));
-            let input = cur_kconfig_file.read_to_string().unwrap();
-            let kconfig_parsed =
-                parse_kconfig(KconfigInput::new_extra(&input, cur_kconfig_file.clone())).unwrap();
-            let entries: Vec<Entry> = kconfig_parsed.1.entries;
-
-            let arch_symbol = match path_no_root.components().nth(1).unwrap() {
-                std::path::Component::Normal(n) => {
-                    let arch_dir = n.to_ascii_uppercase().into_string().unwrap();
-                    debug!("arch_dir: {}", arch_dir);
-                    arch_dir_to_config(&arch_dir)
+                        findings.extend(cur_findings);
+                    }
                 }
-                _ => unreachable!(),
-            };
-
-            if let Some(r#as) = arch_symbol {
-                let expression = Expression::Term(AndExpression::Term(Term::Atom(Atom::Symbol(
-                    Symbol::NonConstant(r#as.to_owned()),
-                ))));
-                for entry in entries {
-                    let cur_findings = entry_processor(
-                        &args,
-                        &mut symbol_table,
-                        entry,
-                        Vec::new(),
-                        Vec::new(),
-                        Vec::from([expression.clone()]),
-                        false, // we don't start in a choice.
-                    );
-
-                    findings.extend(cur_findings);
-                }
-            } else {
-                for entry in entries {
-                    let cur_findings = entry_processor(
-                        &args,
-                        &mut symbol_table,
-                        entry,
-                        Vec::new(),
-                        Vec::new(),
-                        Vec::new(),
-                        false, // we don't start in a choice.
-                    );
-                    findings.extend(cur_findings);
+                None => {
+                    for entry in entries {
+                        let cur_findings = entry_processor(
+                            &args,
+                            &mut symbol_table,
+                            entry,
+                            Vec::new(),
+                            Vec::new(),
+                            Vec::new(),
+                            false, // we don't start in a choice.
+                        );
+                        findings.extend(cur_findings);
+                    }
                 }
             }
+        } else if let Err(e) = kconfig_parse_result {
+            error!("FATAL: failed to parse kconfig, error is {:?}", e);
         }
-    }
-
-    let root_kconfig_file = PathBuf::from("Kconfig"); // doesn't include the arch: arch/x86/Kconfig
-    let cur_kconfig_file = KconfigFile::new(root_linux, root_kconfig_file);
-    let input = cur_kconfig_file.read_to_string().unwrap();
-    let kconfig_parse_result = parse_kconfig(KconfigInput::new_extra(&input, cur_kconfig_file));
-
-    // process the kconfig entries that we parsed from the root kconfig file:
-    if let Ok(parsed_kconfig_file) = kconfig_parse_result {
-        let entries: Vec<Entry> = parsed_kconfig_file.1.entries;
-
-        for entry in entries {
-            let cur_findings = entry_processor(
-                &args,
-                &mut symbol_table,
-                entry,
-                Vec::new(),
-                Vec::new(),
-                Vec::new(),
-                false, // we don't start in a choice.
-            );
-            findings.extend(cur_findings);
-        }
-    } else if let Err(e) = kconfig_parse_result {
-        error!("failed to parse kconfig, error is {:?}", e);
     }
 
     let inner_symtab = symbol_table.raw;
@@ -299,5 +232,5 @@ pub fn check_kconfig(args: AnalysisArgs, linux_source: PathBuf) -> io::Result<Ve
             }
         }
     }
-    Ok(findings)
+    findings
 }

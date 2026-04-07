@@ -1,0 +1,12 @@
+[package]
+name = "kconfirm-linux"
+version = "0.5.1"
+edition = "2024"
+
+
+[dependencies]
+kconfirm-lib = { path = "../kconfirm-lib" }
+nom-kconfig = { workspace = true }
+log = { workspace = true }
+env_logger = { workspace = true }
+walkdir = "2"

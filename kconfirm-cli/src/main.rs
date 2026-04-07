@@ -3,9 +3,10 @@ use clap::Parser;
 use std::io::{self};
 use std::path::PathBuf;
 
-use kconfirm::AnalysisArgs;
-use kconfirm::check_kconfig;
-use kconfirm::output::Finding;
+use kconfirm_lib::AnalysisArgs;
+use kconfirm_lib::check_kconfig;
+use kconfirm_lib::output::Finding;
+use nom_kconfig::{KconfigFile, KconfigInput};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -43,7 +44,12 @@ fn main() -> io::Result<()> {
 
     let linux_source = cli_args.linux_path;
 
-    let findings = check_kconfig(analysis_args, linux_source)?;
+    let root_kconfig_path = PathBuf::from("Kconfig"); // doesn't include the arch: arch/x86/Kconfig
+    let root_kconfig_file = KconfigFile::new(linux_source.clone(), root_kconfig_path);
+    let file_contents = root_kconfig_file.read_to_string().unwrap();
+    let kconfig_input = KconfigInput::new_extra(&file_contents, root_kconfig_file);
+
+    let findings = check_kconfig(analysis_args, vec![(None, kconfig_input)]);
     print_findings(findings);
 
     Ok(())

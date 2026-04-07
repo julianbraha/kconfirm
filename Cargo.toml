@@ -6,11 +6,18 @@ description = "A static analysis tool for Kconfig"
 keywords = ["kconfig", "static", "analysis", "detect"]
 categories = ["development-tools", "config", "command-line-utilities"]
 exclude = ["assets/", "findings/"]
-version = "0.5.0"
+version = "0.5.1"
 edition = "2024"
 
-[dependencies]
-clap = { version = "4.6.0", features = ["derive"] }
+[workspace]
+members = [
+    "kconfirm-lib",
+    "kconfirm-cli",
+    "kconfirm-linux",
+]
+resolver = "3"
+
+[workspace.dependencies]
 log = "0.4.29"
 env_logger = "0.11.10"
 #nom-kconfig = "0.7.0"
@@ -19,6 +26,8 @@ nom-kconfig = {
   rev = "6aa8b3dbceefd8e39b1738f8d0e5f7ac4897d36d",
   features=["glob-source"]
 }
-walkdir = "2"
-regex = "1.12.3"
-reqwest = {version = "0.13.2", features = ["blocking"] }
+
+#[profile.release]
+#opt-level = 3     # maximum
+#lto = "fat"
+#codegen-units = 1
