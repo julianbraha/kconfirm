@@ -769,14 +769,40 @@ dependencies = [
 
 [[package]]
 name = "kconfirm"
-version = "0.5.0"
+version = "0.5.1"
+
+[[package]]
+name = "kconfirm-cli"
+version = "0.5.1"
 dependencies = [
  "clap",
+ "env_logger",
+ "kconfirm-lib",
+ "kconfirm-linux",
+ "log",
+ "nom-kconfig",
+]
+
+[[package]]
+name = "kconfirm-lib"
+version = "0.5.1"
+dependencies = [
  "env_logger",
  "log",
  "nom-kconfig",
  "regex",
  "reqwest",
+]
+
+[[package]]
+name = "kconfirm-linux"
+version = "0.5.1"
+dependencies = [
+ "clap",
+ "env_logger",
+ "kconfirm-lib",
+ "log",
+ "nom-kconfig",
  "walkdir",
 ]
 

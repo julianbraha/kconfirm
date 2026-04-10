@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
 use log::{debug, info, warn};
+use std::io;
 //use nom_kconfig::Entry;
 use nom_kconfig::KconfigFile;
 
@@ -37,8 +38,9 @@ pub fn arch_dir_to_config(arch_dir: &str) -> String {
 
         _ => {
             warn!(
-                "unexpected directory in /arch/ was a new architecture added?
+                "unexpected directory in /arch/ was a new architecture added: {} ?
                 Assuming the config option is the same as the directory name...",
+                arch_dir
             );
             String::from(arch_dir)
         }
@@ -58,11 +60,13 @@ pub fn get_arch_kconfig_files(
 ) -> std::io::Result<Vec<LinuxKconfig>> {
     let mut arch_kconfigs = Vec::new();
 
+    // the Kconfig.debug files in each architecture aren't sourced, so we need to collect them and any other kconfig files recursively
     for dir_entry in walkdir::WalkDir::new(arch_dir_path)
         .into_iter()
         .filter_map(Result::ok)
         .filter(|e| e.file_type().is_file())
     {
+        info!("dir_entry: {:?}", dir_entry);
         let path = dir_entry.path();
 
         if path
@@ -71,7 +75,7 @@ pub fn get_arch_kconfig_files(
             .map(|ext| ext.starts_with("Kconfig")) // was .eq() but we need e.g. arch/arm64/Kconfig.platforms
             .unwrap_or(false)
         {
-            if path.components().any(|component| {
+            /*if path.components().any(|component| {
                 component
                     .as_os_str()
                     .to_str()
@@ -79,7 +83,7 @@ pub fn get_arch_kconfig_files(
             }) {
                 info!("NOTE: skipping the scripts dir for now...");
                 continue;
-            }
+            }*/
 
             debug!("Opening: {}", path.display());
 
@@ -94,16 +98,40 @@ pub fn get_arch_kconfig_files(
             if let std::path::Component::Normal(n) = path_no_root.components().nth(1).unwrap() {
                 let arch_dir = n.to_str().unwrap();
                 debug!("arch_dir: {}", arch_dir);
-                let arch_config_option = arch_dir_to_config(&arch_dir);
-                let arch_kconfig = LinuxKconfig {
-                    arch_config_option: Some(arch_config_option),
-                    file_contents: cur_kconfig_file.read_to_string().unwrap(),
-                    kconfig_file: cur_kconfig_file,
-                };
-                arch_kconfigs.push(arch_kconfig);
+                if linux_root.join("arch").join(arch_dir).is_dir() {
+                    let arch_config_option = arch_dir_to_config(&arch_dir);
+                    let arch_kconfig = LinuxKconfig {
+                        arch_config_option: Some(arch_config_option),
+                        file_contents: cur_kconfig_file.read_to_string().unwrap(),
+                        kconfig_file: cur_kconfig_file,
+                    };
+                    arch_kconfigs.push(arch_kconfig);
+                }
             };
         }
     }
 
     Ok(arch_kconfigs)
+}
+
+// collects the root kconfig file, and all of the arch-specific kconfig files
+pub fn collect_kconfig_root_files(linux_source: PathBuf) -> io::Result<Vec<LinuxKconfig>> {
+    let mut all_root_kconfig_files = Vec::new();
+
+    // add the root kconfig file
+    let root_kconfig_path = PathBuf::from("Kconfig"); // doesn't include the arch: arch/x86/Kconfig
+    let root_kconfig_file = KconfigFile::new(linux_source.clone(), root_kconfig_path.clone());
+    let root_kconfig = LinuxKconfig {
+        arch_config_option: None,
+        file_contents: root_kconfig_file.read_to_string().unwrap(),
+        kconfig_file: root_kconfig_file,
+    };
+    all_root_kconfig_files.push(root_kconfig);
+
+    // add the arch kconfig files
+    let arch_dir_path = linux_source.join("arch");
+    let arch_kconfig_files = get_arch_kconfig_files(linux_source, arch_dir_path)?;
+    all_root_kconfig_files.extend(arch_kconfig_files);
+
+    Ok(all_root_kconfig_files)
 }

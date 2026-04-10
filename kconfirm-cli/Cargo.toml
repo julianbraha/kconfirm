@@ -5,8 +5,9 @@ edition = "2024"
 
 [dependencies]
 kconfirm-lib = { path = "../kconfirm-lib" }
+kconfirm-linux = { path = "../kconfirm-linux" }
 
-clap = { version = "4.6.0", features = ["derive"] }
+clap = { workspace = true }
 nom-kconfig = { workspace = true }
 log = { workspace = true }
 env_logger = { workspace = true }

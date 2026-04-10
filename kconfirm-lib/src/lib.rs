@@ -29,10 +29,6 @@ pub struct AnalysisArgs {
     pub check_dead_links: bool,
 }
 
-// TODO: caller of check_kconfig makes this call:
-//
-//  `let kconfig_files = collect_kconfig_root_files(linux_root);`
-
 pub fn check_kconfig(
     args: AnalysisArgs,
     kconfig_files: Vec<(Option<String>, KconfigInput)>, // for linux, the config options in the kconfig file all depend on the architecture's config option

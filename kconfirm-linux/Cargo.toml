@@ -9,4 +9,5 @@ kconfirm-lib = { path = "../kconfirm-lib" }
 nom-kconfig = { workspace = true }
 log = { workspace = true }
 env_logger = { workspace = true }
+clap = { workspace = true }
 walkdir = "2"

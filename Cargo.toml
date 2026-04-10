@@ -10,22 +10,22 @@ version = "0.5.1"
 edition = "2024"
 
 [workspace]
-members = [
-    "kconfirm-lib",
-    "kconfirm-cli",
-    "kconfirm-linux",
-]
+members = ["kconfirm-lib", "kconfirm-cli", "kconfirm-linux"]
 resolver = "3"
 
 [workspace.dependencies]
-log = "0.4.29"
-env_logger = "0.11.10"
-#nom-kconfig = "0.7.0"
 nom-kconfig = {
   git = "https://github.com/Mcdostone/nom-kconfig",
-  rev = "6aa8b3dbceefd8e39b1738f8d0e5f7ac4897d36d",
-  features=["glob-source"]
+rev = "6aa8b3dbceefd8e39b1738f8d0e5f7ac4897d36d",
+features = ["glob-source"],
+
 }
+#nom-kconfig = "0.7.0"
+
+log = "0.4.29"
+env_logger = "0.11.10"
+
+clap = { version = "4.6.0", features = ["derive"] }
 
 #[profile.release]
 #opt-level = 3     # maximum
