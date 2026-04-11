@@ -7,7 +7,7 @@ keywords = ["kconfig", "static", "analysis", "detect"]
 categories = ["development-tools", "config", "command-line-utilities"]
 exclude = ["assets/", "findings/"]
 version = "0.5.1"
-rust-version = "1.86.0"
+rust-version = "1.87.0"
 
 edition = "2024"
 
