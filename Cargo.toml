@@ -7,6 +7,8 @@ keywords = ["kconfig", "static", "analysis", "detect"]
 categories = ["development-tools", "config", "command-line-utilities"]
 exclude = ["assets/", "findings/"]
 version = "0.5.1"
+rust-version = "1.86.0"
+
 edition = "2024"
 
 [workspace]
@@ -14,12 +16,9 @@ members = ["kconfirm-lib", "kconfirm-cli", "kconfirm-linux"]
 resolver = "3"
 
 [workspace.dependencies]
-nom-kconfig = {
-  git = "https://github.com/Mcdostone/nom-kconfig",
-rev = "6aa8b3dbceefd8e39b1738f8d0e5f7ac4897d36d",
-features = ["glob-source"],
-
-}
+nom-kconfig = { git = "https://github.com/Mcdostone/nom-kconfig", rev = "6aa8b3dbceefd8e39b1738f8d0e5f7ac4897d36d", features = [
+    "glob-source",
+] }
 #nom-kconfig = "0.7.0"
 
 log = "0.4.29"
