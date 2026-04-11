@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 use clap::{ArgGroup, Parser};
-use log::{error, info};
+use log::{debug, error, info};
 use std::fs;
 use std::io;
 use std::path::PathBuf;
@@ -126,6 +126,7 @@ fn main() -> io::Result<()> {
             }
 
             let containing_dir = other_path.parent().expect("kconfig file is in a directory");
+            debug!("attempting to parse using directory: {:?}", &containing_dir);
             let root_kconfig_file = KconfigFile::new(containing_dir.to_path_buf(), other_path);
             let file_contents = root_kconfig_file.read_to_string().unwrap();
             let kconfig_input = KconfigInput::new_extra(&file_contents, root_kconfig_file);
