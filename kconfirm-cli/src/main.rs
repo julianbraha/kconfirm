@@ -20,22 +20,22 @@ use kconfirm_linux::collect_kconfig_root_files;
     long_about = None,
     group(
         ArgGroup::new("source")
-            .args(["linux_path", "coreboot_path", "other_path"])
+            .args(["linux_dir_path", "coreboot_dir_path", "other_kconfig_path"]) // NOTE: make sure to rename these strings when renaming the args
             .required(true)
     )
 )]
 struct Args {
     // path to the linux source directory
     #[arg(long)]
-    linux_path: Option<PathBuf>,
+    linux_dir_path: Option<PathBuf>,
 
     // path to the coreboot source directory
     #[arg(long)]
-    coreboot_path: Option<PathBuf>,
+    coreboot_dir_path: Option<PathBuf>,
 
     // pass the entry kconfig file (usually "Kconfig" or "Config.in")
     #[arg(long)]
-    other_path: Option<PathBuf>,
+    other_kconfig_path: Option<PathBuf>,
 
     // check for duplicate default values (style check)
     #[arg(long)]
@@ -56,9 +56,9 @@ fn main() -> io::Result<()> {
 
     let findings: Vec<Finding>;
     match (
-        cli_args.linux_path,
-        cli_args.coreboot_path,
-        cli_args.other_path,
+        cli_args.linux_dir_path,
+        cli_args.coreboot_dir_path,
+        cli_args.other_kconfig_path,
     ) {
         (Some(linux_path), None, None) => {
             let kconfig_files = collect_kconfig_root_files(linux_path)?;
