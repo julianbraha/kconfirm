@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 use clap::{ArgGroup, Parser};
-use log::info;
+use log::{error, info};
 use std::fs;
 use std::io;
 use std::path::PathBuf;
@@ -20,7 +20,7 @@ use kconfirm_linux::collect_kconfig_root_files;
     long_about = None,
     group(
         ArgGroup::new("source")
-            .args(["linux_path", "coreboot_path"])
+            .args(["linux_path", "coreboot_path", "other_path"])
             .required(true)
     )
 )]
@@ -32,6 +32,10 @@ struct Args {
     // path to the coreboot source directory
     #[arg(long)]
     coreboot_path: Option<PathBuf>,
+
+    // pass the entry kconfig file (usually "Kconfig" or "Config.in")
+    #[arg(long)]
+    other_path: Option<PathBuf>,
 
     // check for duplicate default values (style check)
     #[arg(long)]
@@ -51,8 +55,12 @@ fn main() -> io::Result<()> {
     };
 
     let findings: Vec<Finding>;
-    match (cli_args.linux_path, cli_args.coreboot_path) {
-        (Some(linux_path), _) => {
+    match (
+        cli_args.linux_path,
+        cli_args.coreboot_path,
+        cli_args.other_path,
+    ) {
+        (Some(linux_path), None, None) => {
             let kconfig_files = collect_kconfig_root_files(linux_path)?;
             let kconfig_inputs = kconfig_files
                 .iter()
@@ -67,7 +75,7 @@ fn main() -> io::Result<()> {
                 .collect();
             findings = check_kconfig(analysis_args, kconfig_inputs);
         }
-        (_, Some(coreboot_path)) => {
+        (None, Some(coreboot_path), None) => {
             let root_kconfig_path = PathBuf::from("src/Kconfig");
             let root_kconfig_file = KconfigFile::new(coreboot_path.clone(), root_kconfig_path);
             let file_contents = root_kconfig_file.read_to_string().unwrap();
@@ -105,6 +113,24 @@ fn main() -> io::Result<()> {
                 fs::remove_dir(site_local_dir)?;
                 info!("Cleaned up coreboot/site-local/.");
             }
+        }
+
+        // other path
+        (None, None, Some(other_path)) => {
+            // NOTE: this assumes that there is a file called "Kconfig" in the directory
+            // TODO: it's "Config.in" for buildroot and busybox, consider having the user specify the file path instead of the directory
+            if !other_path.is_file() {
+                error!(
+                    "A directory was passed to '--other_path'. Instead, please pass the kconfig entry file (probably 'Kconfig' or 'Config.in'."
+                );
+            }
+
+            let containing_dir = other_path.parent().expect("kconfig file is in a directory");
+            let root_kconfig_file = KconfigFile::new(containing_dir.to_path_buf(), other_path);
+            let file_contents = root_kconfig_file.read_to_string().unwrap();
+            let kconfig_input = KconfigInput::new_extra(&file_contents, root_kconfig_file);
+            let kconfig_inputs = vec![(None, kconfig_input)];
+            findings = check_kconfig(analysis_args, kconfig_inputs);
         }
         _ => unreachable!("clap ensures that these arguments are mutually-exclusive"),
     }
