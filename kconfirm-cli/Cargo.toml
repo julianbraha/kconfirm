@@ -8,6 +8,6 @@ kconfirm-lib = { path = "../kconfirm-lib" }
 kconfirm-linux = { path = "../kconfirm-linux" }
 
 clap = { workspace = true }
-nom-kconfig = { workspace = true }
+nom-kconfig = { workspace = true, features = ["coreboot"] }
 log = { workspace = true }
 env_logger = { workspace = true }

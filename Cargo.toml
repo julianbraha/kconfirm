@@ -16,7 +16,7 @@ members = ["kconfirm-lib", "kconfirm-cli", "kconfirm-linux"]
 resolver = "3"
 
 [workspace.dependencies]
-nom-kconfig = { version = "0.8.0", features = ["coreboot"] }
+nom-kconfig = { version = "0.8.0" }
 
 log = "0.4.29"
 env_logger = "0.11.10"
