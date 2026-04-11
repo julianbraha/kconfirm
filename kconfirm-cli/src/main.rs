@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: GPL-2.0-only
 use clap::{ArgGroup, Parser};
-use std::io::{self};
+use log::info;
+use std::fs;
+use std::io;
 use std::path::PathBuf;
 
-use kconfirm_linux::collect_kconfig_root_files;
+use nom_kconfig::{KconfigFile, KconfigInput};
 
 use kconfirm_lib::AnalysisArgs;
 use kconfirm_lib::check_kconfig;
 use kconfirm_lib::output::{Finding, print_findings};
-use nom_kconfig::{KconfigFile, KconfigInput};
+use kconfirm_linux::collect_kconfig_root_files;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -66,12 +68,43 @@ fn main() -> io::Result<()> {
             findings = check_kconfig(analysis_args, kconfig_inputs);
         }
         (_, Some(coreboot_path)) => {
-            let root_kconfig_path = PathBuf::from("payloads/external/SeaBIOS/Kconfig"); // TODO: doesn't include the arch: arch/x86/Kconfig
+            let root_kconfig_path = PathBuf::from("src/Kconfig");
             let root_kconfig_file = KconfigFile::new(coreboot_path.clone(), root_kconfig_path);
             let file_contents = root_kconfig_file.read_to_string().unwrap();
             let kconfig_input = KconfigInput::new_extra(&file_contents, root_kconfig_file);
             let kconfig_inputs = vec![(None, kconfig_input)];
+
+            let site_local_dir = coreboot_path.join("site-local");
+            let site_local_kconfig = site_local_dir.join("Kconfig");
+
+            let mut created_dir = false;
+            let mut temp_kconfig = None;
+            if !site_local_kconfig.exists() {
+                info!(
+                    "coreboot/site-local/Kconfig was missing. Attempting to create it temporarily..."
+                );
+                if !site_local_dir.exists() {
+                    fs::create_dir(&site_local_dir)?;
+                    info!("coreboot/site-local/ was created temporarily.");
+                    created_dir = true;
+                }
+
+                temp_kconfig = Some(fs::File::create_new(&site_local_kconfig)?);
+                info!("coreboot/site-local/Kconfig was created temporarily.");
+            }
+
+            //write!(tmpfile, "Hello World!").unwrap();
             findings = check_kconfig(analysis_args, kconfig_inputs);
+
+            if temp_kconfig.is_some() {
+                fs::remove_file(site_local_kconfig)?;
+                info!("Cleaned up coreboot/site-local/Kconfig.");
+            }
+
+            if created_dir {
+                fs::remove_dir(site_local_dir)?;
+                info!("Cleaned up coreboot/site-local/.");
+            }
         }
         _ => unreachable!("clap ensures that these arguments are mutually-exclusive"),
     }

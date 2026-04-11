@@ -3,12 +3,12 @@ use clap::Parser;
 use std::io::{self};
 use std::path::PathBuf;
 
-use kconfirm_linux::collect_kconfig_root_files;
+use nom_kconfig::KconfigInput;
 
 use kconfirm_lib::AnalysisArgs;
 use kconfirm_lib::check_kconfig;
 use kconfirm_lib::output::print_findings;
-use nom_kconfig::KconfigInput;
+use kconfirm_linux::collect_kconfig_root_files;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
