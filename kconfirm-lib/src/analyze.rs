@@ -15,6 +15,11 @@ use nom_kconfig::{
     Attribute::*,
     Entry::{self, *},
 };
+use std::collections::HashSet;
+
+pub fn is_duplicate<T: Eq + std::hash::Hash>(set: &mut HashSet<T>, key: T) -> bool {
+    !set.insert(key)
+}
 
 // recursively enters each entry until we reach the Configs and then translates them into z3 types/logic.
 // inserts the entry into the symbol table.

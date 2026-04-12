@@ -1,12 +1,13 @@
+// a1532790b90c714ab3e51555b68d4df1539ad72b
 use std::fs;
 use std::process::Command;
 
 #[test]
 // system test
-fn test_linux_kconfig_analysis_v6_19() {
-    let tmp_dir = std::env::temp_dir().join("kconfirm_linux_test");
-    let tar_path = tmp_dir.join("linux-6.19.tar.xz");
-    let extract_dir = tmp_dir.join("linux-6.19");
+fn test_coreboot_kconfig_analysis_v24_12() {
+    let tmp_dir = std::env::temp_dir().join("kconfirm_coreboot_test");
+    let tar_path = tmp_dir.join("coreboot-26.03.tar.gz");
+    let extract_dir = tmp_dir.join("coreboot-26.03");
 
     fs::create_dir_all(&tmp_dir).unwrap();
 
@@ -15,7 +16,7 @@ fn test_linux_kconfig_analysis_v6_19() {
         let status = Command::new("curl")
             .args(["-L", "-o"])
             .arg(&tar_path)
-            .arg("https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.19.tar.xz")
+            .arg("https://github.com/coreboot/coreboot/archive/refs/tags/26.03.tar.gz")
             .status()
             .expect("failed to run curl");
 
@@ -25,7 +26,7 @@ fn test_linux_kconfig_analysis_v6_19() {
     // extract if missing
     if !extract_dir.exists() {
         let status = Command::new("tar")
-            .arg("-xf")
+            .arg("-xzf")
             .arg(&tar_path)
             .arg("-C")
             .arg(&tmp_dir)
@@ -44,7 +45,7 @@ fn test_linux_kconfig_analysis_v6_19() {
             "kconfirm-cli",
             "--quiet",
             "--",
-            "--linux-dir-path",
+            "--coreboot-dir-path",
         ])
         .arg(&extract_dir)
         .arg("--check-style")
@@ -64,8 +65,8 @@ fn test_linux_kconfig_analysis_v6_19() {
     let line_count = stdout.lines().count();
 
     assert!(
-        line_count == 921,
-        "expected 921 lines, got {}\n See output:\n{}",
+        line_count == 284,
+        "expected 284 lines, got {}\n See output:\n{}",
         line_count,
         stdout
     );

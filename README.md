@@ -64,14 +64,17 @@ cd kconfirm
 # compile
 cargo build --release
 
-# run
-./target/release/kconfirm --linux-path RELATIVE_PATH_TO_LINUX_SOURCE
+# run (for linux):
+./target/release/kconfirm --linux-dir-path RELATIVE_PATH_TO_LINUX_SOURCE
+
+# run (for coreboot):
+./target/release/kconfirm --coreboot-dir-path RELATIVE_PATH_TO_COREBOOT_SOURCE
 ```
 
 To enable the check for dead links in the Kconfig `help` texts:
 ```
 # NOTE: this is very slow! It will attempt to visit every link that it finds!
-./target/release/kconfirm --linux-path RELATIVE_PATH_TO_LINUX_SOURCE --check-dead-links
+./target/release/kconfirm-cli --linux-dir-path RELATIVE_PATH_TO_LINUX_SOURCE --check-dead-links
 ```
 
 ## Special Thanks

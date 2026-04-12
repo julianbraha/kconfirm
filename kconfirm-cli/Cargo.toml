@@ -1,0 +1,14 @@
+[package]
+name = "kconfirm-cli"
+version = "0.6.0"
+edition = "2024"
+rust-version.workspace = true
+
+[dependencies]
+kconfirm-lib = { path = "../kconfirm-lib", features = ["coreboot"] }
+kconfirm-linux = { path = "../kconfirm-linux" }
+
+clap = { workspace = true }
+nom-kconfig = { workspace = true, features = ["coreboot"] }
+log = { workspace = true }
+env_logger = { workspace = true }

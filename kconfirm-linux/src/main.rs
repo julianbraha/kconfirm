@@ -3,9 +3,12 @@ use clap::Parser;
 use std::io::{self};
 use std::path::PathBuf;
 
-use kconfirm::AnalysisArgs;
-use kconfirm::check_kconfig;
-use kconfirm::output::Finding;
+use nom_kconfig::KconfigInput;
+
+use kconfirm_lib::AnalysisArgs;
+use kconfirm_lib::check_kconfig;
+use kconfirm_lib::output::print_findings;
+use kconfirm_linux::collect_kconfig_root_files;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -23,16 +26,6 @@ struct Args {
     check_dead_links: bool,
 }
 
-fn print_findings(mut findings: Vec<Finding>) {
-    findings.sort_by(|a, b| {
-        (&a.severity, &a.check, &a.symbol).cmp(&(&b.severity, &b.check, &b.symbol))
-    });
-
-    for f in &findings {
-        println!("{}", f);
-    }
-}
-
 fn main() -> io::Result<()> {
     env_logger::init();
     let cli_args = Args::parse();
@@ -41,9 +34,18 @@ fn main() -> io::Result<()> {
         check_dead_links: cli_args.check_dead_links,
     };
 
-    let linux_source = cli_args.linux_path;
+    let kconfig_files = collect_kconfig_root_files(cli_args.linux_path)?;
+    let kconfig_inputs = kconfig_files
+        .iter()
+        .map(|kconfig| {
+            let kconfig_input =
+                KconfigInput::new_extra(&kconfig.file_contents, kconfig.kconfig_file.clone());
 
-    let findings = check_kconfig(analysis_args, linux_source)?;
+            (kconfig.arch_config_option.clone(), kconfig_input)
+        })
+        .collect();
+    let findings = check_kconfig(analysis_args, kconfig_inputs);
+
     print_findings(findings);
 
     Ok(())

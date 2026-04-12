@@ -38,3 +38,13 @@ impl fmt::Display for Finding {
         }
     }
 }
+
+pub fn print_findings(mut findings: Vec<Finding>) {
+    findings.sort_by(|a, b| {
+        (&a.severity, &a.check, &a.symbol).cmp(&(&b.severity, &b.check, &b.symbol))
+    });
+
+    for f in &findings {
+        println!("{}", f);
+    }
+}
