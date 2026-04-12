@@ -74,7 +74,7 @@ cargo build --release
 To enable the check for dead links in the Kconfig `help` texts:
 ```
 # NOTE: this is very slow! It will attempt to visit every link that it finds!
-./target/release/kconfirm --linux-dir-path RELATIVE_PATH_TO_LINUX_SOURCE --check-dead-links
+./target/release/kconfirm-cli --linux-dir-path RELATIVE_PATH_TO_LINUX_SOURCE --check-dead-links
 ```
 
 ## Special Thanks
