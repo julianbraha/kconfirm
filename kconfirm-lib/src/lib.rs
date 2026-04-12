@@ -145,7 +145,17 @@ pub fn check_kconfig(
             // TODO: cleanup this code (especially the clones, and the if-handling)
             for select in &kconfig_redefinition.selects {
                 let select_var = select.clone().0;
+
                 if let Some(select_cond) = &select.1 {
+                    if all_selects.contains(&(select_var.clone(), String::new())) {
+                        findings.push(Finding {
+                            severity: Severity::Warning,
+                            check: "dead_select",
+                            symbol: Some(var_symbol.clone()),
+                            message: format!("dead select of {:?}", select),
+                        });
+                    }
+
                     if is_duplicate(&mut all_selects, (select_var, select_cond.to_string())) {
                         findings.push(Finding {
                             severity: Severity::Warning,
