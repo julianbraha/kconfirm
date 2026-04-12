@@ -7,12 +7,12 @@ A static analysis tool for the Kconfig language.
 
 Detect dead code, dead links in help texts, and more. Unmet dependency detection (inspired by [kismet](https://dl.acm.org/doi/pdf/10.1145/3468264.3468578)) is in development. This uses SMT instead of SAT, to reduce false negatives and false positives.
 
-# Submitted Patches
+## Submitted Patches: Linux
 
-## Unmet Dependency Bugs
+### Unmet Dependency Bugs
 [2026-03-25 "ASoC: Intel: boards: fix unmet dependency on PINCTRL"](https://lore.kernel.org/all/20260325001522.1727678-1-julianbraha@gmail.com/)
 
-## Dead Defaults
+### Dead Defaults
 
 [2026-03-23 "drm: fix dead default for DRM_TTM_KUNIT_TEST"](https://lore.kernel.org/all/20260323124118.1414913-1-julianbraha@gmail.com/)
 
@@ -20,9 +20,13 @@ Detect dead code, dead links in help texts, and more. Unmet dependency detection
 
 [2026-03-22 "soc: aspeed: cleanup dead default for ASPEED_SOCINFO"](https://lkml.org/lkml/2026/3/22/591)
 
-## Duplicate Dependencies
+### Duplicate Dependencies
 
 [2026-04-02 "stmmac: cleanup dead dependencies on STMMAC_PLATFORM and STMMAC_ETH in Kconfig"](https://lore.kernel.org/all/20260402145858.240231-1-julianbraha@gmail.com/)
+
+[2026-03-31 "mm/thp: dead code cleanup in Kconfig"](https://lore.kernel.org/all/20260331070730.33915-1-julianbraha@gmail.com/)
+
+[2026-03-31 "media: dvb: cleanup dead DVB_USB code in Kconfig"](https://lore.kernel.org/all/20260331153230.15871-1-julianbraha@gmail.com/)
 
 [2026-03-31 "keys: cleanup dead code in Kconfig for FIPS_SIGNATURE_SELFTEST"](https://lore.kernel.org/all/20260331122214.103145-1-julianbraha@gmail.com/)
 
@@ -38,19 +42,33 @@ Detect dead code, dead links in help texts, and more. Unmet dependency detection
 
 [2026-03-29 "net: microchip: dead code cleanup in kconfig for FDMA"](https://lore.kernel.org/all/20260329185348.526893-1-julianbraha@gmail.com/)
 
-[2026-03-29 "media: dead code cleanup in kconfig for VIDEO_SOLO6X10"](https://lore.kernel.org/all/20260329183942.522693-1-julianbraha@gmail.com/)
+### Duplicate Selects
 
 [2026-03-29 "ARM: omap2: dead code cleanup in kconfig for ARCH_OMAP4"](https://lore.kernel.org/all/20260329183018.519560-1-julianbraha@gmail.com/)
 
-## Dead Configuration Options
+[2026-03-29 "media: dead code cleanup in kconfig for VIDEO_SOLO6X10"](https://lore.kernel.org/all/20260329183942.522693-1-julianbraha@gmail.com/)
+
+### Dead Configuration Options
 
 [2026-03-09 "serial: remove drivers for espressif esp32"](https://lore.kernel.org/all/20260309122321.1528622-1-julianbraha@gmail.com/)
 
-## Known Dead Links
+### Dead Links
+
+[2026-04-05" \[JFFS2\] update dead link in kconfig help text"](https://lore.kernel.org/all/20260405162252.163276-1-julianbraha@gmail.com/)
+
+### Known Dead Links
 
 Linux 7.0-rc6 has 82 known, unique dead links in the Kconfig help texts, hand-checked from kconfirm's results.
 
 See [findings/dead_links_7_0_rc6.txt](/findings/dead_links_7_0_rc6.txt)
+
+## Submitted Patches: coreboot
+
+### Dead Defaults
+
+[2026-04-12 "mainboard/opencellular/elgon/Kconfig: fix dead default for FMDFILE"](https://review.coreboot.org/c/coreboot/+/92141)
+
+[2026-04-12 "payloads/Kconfig: fix dead default for PAYLOAD_FIT_SUPPORT"](https://review.coreboot.org/c/coreboot/+/92140)
 
 # Usage
 
