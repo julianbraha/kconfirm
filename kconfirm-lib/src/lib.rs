@@ -10,7 +10,7 @@ mod dead_links;
 mod analyze;
 use analyze::*;
 
-use log::{error, info};
+use log::{debug, error};
 use nom_kconfig::Entry;
 use nom_kconfig::Symbol;
 use nom_kconfig::attribute::AndExpression;
@@ -31,7 +31,7 @@ pub struct AnalysisArgs {
 
 pub fn check_kconfig(
     args: AnalysisArgs,
-    kconfig_files: Vec<(Option<String>, KconfigInput)>, // for linux, the config options in the kconfig file all depend on the architecture's config option
+    kconfig_files: Vec<(Option<String>, KconfigInput)>, // for linux, the config options in the kconfig file are only defined if the architecture's config option is enabled
 ) -> Vec<Finding> {
     // will store detected kconfig issues, to be printed one line at a time at the end
     let mut findings = Vec::new();
@@ -50,15 +50,15 @@ pub fn check_kconfig(
                     let arch_config_option_expression = Expression::Term(AndExpression::Term(
                         Term::Atom(Atom::Symbol(Symbol::NonConstant(aco.to_owned()))),
                     ));
-                    info!("aco: {}", aco);
+                    debug!("aco: {}", aco);
                     for entry in entries {
                         let cur_findings = entry_processor(
                             &args,
                             &mut symbol_table,
                             entry,
+                            Vec::from([arch_config_option_expression.clone()]), // every config option in the arch kconfig file is defined only if the arch config option is enabled
                             Vec::new(),
                             Vec::new(),
-                            Vec::from([arch_config_option_expression.clone()]), // every config option in the arch kconfig file depends on the arch config option
                             false, // we don't start in a choice.
                         );
 

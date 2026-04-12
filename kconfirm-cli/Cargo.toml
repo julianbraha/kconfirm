@@ -5,7 +5,7 @@ edition = "2024"
 rust-version.workspace = true
 
 [dependencies]
-kconfirm-lib = { path = "../kconfirm-lib", features = ["coreboot"] }
+kconfirm-lib = { path = "../kconfirm-lib" }
 kconfirm-linux = { path = "../kconfirm-linux" }
 
 clap = { workspace = true }

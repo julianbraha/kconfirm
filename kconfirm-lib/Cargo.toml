@@ -10,6 +10,3 @@ regex = "1.12.3"
 nom-kconfig = { workspace = true }
 log = { workspace = true }
 env_logger = { workspace = true }
-
-[features]
-coreboot = ["nom-kconfig/coreboot"]
