@@ -6,7 +6,7 @@ description = "A static analysis tool for Kconfig"
 keywords = ["kconfig", "static", "analysis", "detect"]
 categories = ["development-tools", "config", "command-line-utilities"]
 exclude = ["assets/", "findings/"]
-version = "0.5.1"
+version = "0.6.0"
 edition = "2024"
 
 [workspace]
