@@ -42,7 +42,7 @@ pub fn arch_dir_to_config(arch_dir: &str) -> String {
                 Assuming the config option is the same as the directory name...",
                 arch_dir
             );
-            String::from(arch_dir)
+            String::from(arch_dir).to_uppercase()
         }
     }
 }
