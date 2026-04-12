@@ -123,7 +123,7 @@ pub fn collect_kconfig_root_files(linux_source: PathBuf) -> io::Result<Vec<Linux
     let root_kconfig_file = KconfigFile::new(linux_source.clone(), root_kconfig_path.clone());
     let root_kconfig = LinuxKconfig {
         arch_config_option: None,
-        file_contents: root_kconfig_file.read_to_string().unwrap(),
+        file_contents: root_kconfig_file.read_to_string()?,
         kconfig_file: root_kconfig_file,
     };
     all_root_kconfig_files.push(root_kconfig);

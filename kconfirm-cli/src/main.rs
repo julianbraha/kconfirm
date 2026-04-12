@@ -101,8 +101,9 @@ fn main() -> io::Result<()> {
                 info!("coreboot/site-local/Kconfig was created temporarily.");
             }
 
-            //write!(tmpfile, "Hello World!").unwrap();
+            // TODO: ensure that if check_kconfig errors, then we still remove the dir and file that was created
             findings = check_kconfig(analysis_args, kconfig_inputs);
+
 
             if temp_kconfig.is_some() {
                 fs::remove_file(site_local_kconfig)?;
