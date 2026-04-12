@@ -78,7 +78,7 @@ fn main() -> io::Result<()> {
         (None, Some(coreboot_path), None) => {
             let root_kconfig_path = PathBuf::from("src/Kconfig");
             let root_kconfig_file = KconfigFile::new(coreboot_path.clone(), root_kconfig_path);
-            let file_contents = root_kconfig_file.read_to_string().unwrap();
+            let file_contents = root_kconfig_file.read_to_string()?;
             let kconfig_input = KconfigInput::new_extra(&file_contents, root_kconfig_file);
             let kconfig_inputs = vec![(None, kconfig_input)];
 
@@ -116,19 +116,20 @@ fn main() -> io::Result<()> {
         }
 
         // other path
-        (None, None, Some(other_path)) => {
+        (None, None, Some(other_kconfig_path)) => {
             // NOTE: this assumes that there is a file called "Kconfig" in the directory
             // TODO: it's "Config.in" for buildroot and busybox, consider having the user specify the file path instead of the directory
-            if !other_path.is_file() {
+            if !other_kconfig_path.is_file() {
                 error!(
-                    "A directory was passed to '--other_path'. Instead, please pass the kconfig entry file (probably 'Kconfig' or 'Config.in'."
+                    "A directory was passed to '--other_kconfig_path'. Instead, please pass the kconfig entry file (probably 'Kconfig' or 'Config.in'."
                 );
+                panic!(); // TODO: create a KconfigError type that has io errors and CLI usage errors
             }
 
-            let containing_dir = other_path.parent().expect("kconfig file is in a directory");
+            let containing_dir = other_kconfig_path.parent().expect("kconfig file is in a directory");
             debug!("attempting to parse using directory: {:?}", &containing_dir);
-            let root_kconfig_file = KconfigFile::new(containing_dir.to_path_buf(), other_path);
-            let file_contents = root_kconfig_file.read_to_string().unwrap();
+            let root_kconfig_file = KconfigFile::new(containing_dir.to_path_buf(), other_kconfig_path);
+            let file_contents = root_kconfig_file.read_to_string()?;
             let kconfig_input = KconfigInput::new_extra(&file_contents, root_kconfig_file);
             let kconfig_inputs = vec![(None, kconfig_input)];
             findings = check_kconfig(analysis_args, kconfig_inputs);

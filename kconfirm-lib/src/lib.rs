@@ -82,6 +82,7 @@ pub fn check_kconfig(
             }
         } else if let Err(e) = kconfig_parse_result {
             error!("FATAL: failed to parse kconfig, error is {:?}", e);
+            panic!();
         }
     }
 
