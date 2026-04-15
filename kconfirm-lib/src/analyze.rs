@@ -6,7 +6,7 @@ use crate::dead_links::{self, LinkStatus, check_link};
 use crate::output::{Finding, Severity};
 use crate::symbol_table::ChoiceData;
 
-use log::debug;
+use log::{debug, info, warn};
 use nom_kconfig::attribute::DefaultAttribute;
 use nom_kconfig::attribute::Expression;
 use nom_kconfig::attribute::Select;
@@ -16,6 +16,72 @@ use nom_kconfig::{
     Entry::{self, *},
 };
 use std::collections::HashSet;
+use std::option::Option;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum FunctionalAttributes {
+    // only tracking the attributes that affect the semantics, e.g. not help texts
+    Dependencies,
+    Selects,
+    Implies,
+    Ranges,
+    Defaults,
+}
+
+struct AttributeGroupingChecker {
+    current_group: Option<FunctionalAttributes>,
+    finished_groups: HashSet<FunctionalAttributes>,
+}
+
+impl AttributeGroupingChecker {
+    fn new() -> Self {
+        Self {
+            current_group: None,
+            finished_groups: HashSet::new(),
+        }
+    }
+
+    fn check(
+        &mut self,
+        group: FunctionalAttributes,
+        args: &AnalysisArgs,
+        findings: &mut Vec<Finding>,
+        symbol: &str,
+        message: String,
+    ) {
+        if !args.check_style {
+            return;
+        }
+
+        match self.current_group {
+            // still contiguous
+            Some(current) if current == group => {}
+
+            // start of group
+            None => {
+                self.current_group = Some(group);
+            }
+
+            Some(current) => {
+                // the previous group finished
+                self.finished_groups.insert(current);
+
+                // we've already finished this group, it's ungrouped
+                if self.finished_groups.contains(&group) {
+                    findings.push(Finding {
+                        severity: Severity::Style,
+                        check: "ungrouped_attribute",
+                        symbol: Some(symbol.to_string()),
+                        message,
+                    });
+                }
+
+                // switch to the new group
+                self.current_group = Some(group);
+            }
+        }
+    }
+}
 
 pub fn is_duplicate<T: Eq + std::hash::Hash>(set: &mut HashSet<T>, key: T) -> bool {
     !set.insert(key)
@@ -56,18 +122,35 @@ pub fn entry_processor(
             let mut kconfig_selects: Vec<Select> = Vec::new();
             let mut kconfig_ranges = Vec::new();
             let mut kconfig_defaults = Vec::new();
+            /*
+             * style check: ungrouped attributes
+             * - need to check that dependencies, selects, ranges, and defaults are each kept together.
+             */
+
+            info!("attributes are: {:?}", &c.attributes);
+
+            let mut attribute_grouping_checker = AttributeGroupingChecker::new();
             for attribute in c.attributes {
                 match attribute {
                     Type(kconfig_type) => match kconfig_type.r#type.clone() {
                         // hybrid type definition and default
                         Type::DefBool(db) => {
                             let default_attribute: DefaultAttribute = DefaultAttribute {
-                                expression: db,
+                                expression: db.clone(),
                                 r#if: kconfig_type.clone().r#if,
                             };
 
                             kconfig_defaults.push(default_attribute);
                             config_type = Some(kconfig_type);
+
+                            // NOTE: as a style, we prefer to keep the hybrid default-typedef with the standalone defaults
+                            attribute_grouping_checker.check(
+                                FunctionalAttributes::Defaults,
+                                args,
+                                &mut findings,
+                                &config_symbol,
+                                format!("ungrouped default {}", db),
+                            );
                         }
                         Type::Bool(_b) => {
                             config_type = Some(kconfig_type);
@@ -75,27 +158,87 @@ pub fn entry_processor(
 
                         // hybrid type definition and default
                         Type::DefTristate(dt) => {
+                            // NOTE: as a style, we prefer to keep the hybrid default-typedef with the standalone defaults
+                            attribute_grouping_checker.check(
+                                FunctionalAttributes::Defaults,
+                                args,
+                                &mut findings,
+                                &config_symbol,
+                                format!("ungrouped default {}", &dt),
+                            );
+
                             let default_attribute: DefaultAttribute = DefaultAttribute {
                                 expression: dt,
                                 r#if: kconfig_type.clone().r#if,
                             };
 
                             kconfig_defaults.push(default_attribute);
-                            config_type = Some(kconfig_type)
+                            config_type = Some(kconfig_type);
                         }
                         Type::Tristate(_ts) => config_type = Some(kconfig_type.clone()),
                         Type::Hex(_h) => config_type = Some(kconfig_type),
                         Type::Int(_i) => config_type = Some(kconfig_type),
                         Type::String(_s) => config_type = Some(kconfig_type),
                     },
+                    Default(default) => {
+                        attribute_grouping_checker.check(
+                            FunctionalAttributes::Defaults,
+                            args,
+                            &mut findings,
+                            &config_symbol,
+                            format!("ungrouped default {}", &default),
+                        );
+
+                        kconfig_defaults.push(default);
+                    }
+
                     DependsOn(depends_on) => {
+                        attribute_grouping_checker.check(
+                            FunctionalAttributes::Dependencies,
+                            args,
+                            &mut findings,
+                            &config_symbol,
+                            format!("ungrouped dependency {}", &depends_on),
+                        );
+
                         kconfig_dependencies.push(depends_on);
                     }
                     Select(select) => {
+                        attribute_grouping_checker.check(
+                            FunctionalAttributes::Selects,
+                            args,
+                            &mut findings,
+                            &config_symbol,
+                            format!("ungrouped select {}", &select),
+                        );
+
                         kconfig_selects.push(select);
                     }
+                    Imply(imply) => {
+                        // doing nothing for imply in the symtab right now
 
-                    Default(default) => kconfig_defaults.push(default),
+                        attribute_grouping_checker.check(
+                            FunctionalAttributes::Implies,
+                            args,
+                            &mut findings,
+                            &config_symbol,
+                            format!("ungrouped imply {}", imply),
+                        );
+
+                        // TODO: may be relevant for nonvisible config options when building an SMT model...
+                    }
+                    // NOTE: range bounds are inclusive
+                    Range(r) => {
+                        attribute_grouping_checker.check(
+                            FunctionalAttributes::Ranges,
+                            args,
+                            &mut findings,
+                            &config_symbol,
+                            format!("ungrouped range {}", r),
+                        );
+
+                        kconfig_ranges.push(r);
+                    }
                     Help(h) => {
                         // doing nothing for menu help right now
 
@@ -122,21 +265,12 @@ pub fn entry_processor(
                             }
                         }
                     }
-                    Range(r) => {
-                        kconfig_ranges.push(r);
-                        // NOTE: bounds are inclusive
-                    }
+
                     Modules => {
                         // the modules attribute designates this config option as the one that determines if the `m` state is available for tristates options.
 
                         // just making a special note of this in the symtab for now...
                         symbol_table.modules_option = Some(config_symbol.clone());
-                    }
-
-                    Imply(_imply) => {
-                        // doing nothing for imply right now
-
-                        // TODO: may be relevant for nonvisible config options when building an SMT model...
                     }
 
                     // the prompt's option `if` determines "visibility"
@@ -291,26 +425,49 @@ pub fn entry_processor(
 
             for inner_entry in c.entries {
                 // just want to make sure that there's nothing unexpected in the choice (like a nested choice...)
-                match &inner_entry {
+                match inner_entry {
                     Config(_) | Comment(_) | Source(_) => {
                         // TODO: check the comment and source for dead links
+
+                        let cur_findings = entry_processor(
+                            args,
+                            symbol_table,
+                            inner_entry,
+                            cur_definedness_condition.clone(),
+                            cur_visibility_condition.clone(),
+                            existing_dependencies_with_choice_dependencies.clone(),
+                            true,
+                        );
+
+                        findings.extend(cur_findings);
+                    }
+                    If(i) => {
+                        // if-statements within choice-statements are not present (right now) in linux, coreboot, or openwrt.
+                        // is present in u-boot!!!
+
+                        let new_dependency = i.condition;
+
+                        cur_dependencies.push(new_dependency);
+
+                        for inner_entry in i.entries {
+                            // recursive call
+                            let cur_findings = entry_processor(
+                                args,
+                                symbol_table,
+                                inner_entry,
+                                cur_definedness_condition.clone(),
+                                cur_visibility_condition.clone(),
+                                cur_dependencies.clone(),
+                                is_in_a_choice,
+                            );
+
+                            findings.extend(cur_findings);
+                        }
                     }
                     _ => {
                         unreachable!("unexpected thing in a choice: {:?}", inner_entry);
                     }
                 }
-
-                let cur_findings = entry_processor(
-                    args,
-                    symbol_table,
-                    inner_entry,
-                    cur_definedness_condition.clone(),
-                    cur_visibility_condition.clone(),
-                    existing_dependencies_with_choice_dependencies.clone(),
-                    true,
-                );
-
-                findings.extend(cur_findings);
 
                 //contained_vars.append(&mut processed_var);
             }

@@ -90,11 +90,10 @@ pub fn check_kconfig(
 
     let mut all_vars = Vec::new();
 
-    for type_info_ref in inner_symtab.iter() {
-        let var_symbol = type_info_ref.0;
+    for (var_symbol, type_info_ref) in inner_symtab.iter() {
         all_vars.push(var_symbol.clone());
 
-        for kconfig_redefinition in &type_info_ref.1.variable_info {
+        for kconfig_redefinition in &type_info_ref.variable_info {
             let mut all_dependencies =
                 HashSet::with_capacity(kconfig_redefinition.kconfig_dependencies.len());
             for dep in &kconfig_redefinition.kconfig_dependencies {
