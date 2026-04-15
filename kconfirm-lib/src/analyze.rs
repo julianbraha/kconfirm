@@ -83,6 +83,59 @@ impl AttributeGroupingChecker {
     }
 }
 
+struct DeadLinkChecker {
+    visited_links: HashSet<String>,
+}
+
+impl DeadLinkChecker {
+    fn new() -> Self {
+        Self {
+            visited_links: HashSet::new(),
+        }
+    }
+
+    fn check_text(
+        &mut self,
+        text: &str,
+        args: &AnalysisArgs,
+        findings: &mut Vec<Finding>,
+        symbol: Option<&str>,
+        context: &str,
+    ) {
+        if !args.check_dead_links {
+            return;
+        }
+
+        let links = dead_links::find_links(text);
+
+        if links.is_empty() {
+            return;
+        }
+
+        debug!("{} links are: {:?}", context, links);
+
+        for link in links {
+            // avoid rechecking identical links
+            if !self.visited_links.insert(link.clone()) {
+                continue;
+            }
+
+            let status = check_link(&link);
+            if status != LinkStatus::Ok && status != LinkStatus::ProbablyBlocked {
+                findings.push(Finding {
+                    severity: Severity::Warning,
+                    check: "dead_link",
+                    symbol: symbol.map(|s| s.to_string()),
+                    message: format!(
+                        "{} contains link {} with status {:?}",
+                        context, link, status
+                    ),
+                });
+            }
+        }
+    }
+}
+
 pub fn is_duplicate<T: Eq + std::hash::Hash>(set: &mut HashSet<T>, key: T) -> bool {
     !set.insert(key)
 }
@@ -130,6 +183,7 @@ pub fn entry_processor(
             info!("attributes are: {:?}", &c.attributes);
 
             let mut attribute_grouping_checker = AttributeGroupingChecker::new();
+            let mut dead_link_checker = DeadLinkChecker::new();
             for attribute in c.attributes {
                 match attribute {
                     Type(kconfig_type) => match kconfig_type.r#type.clone() {
@@ -242,28 +296,13 @@ pub fn entry_processor(
                     Help(h) => {
                         // doing nothing for menu help right now
 
-                        if args.check_dead_links {
-                            let help_links = dead_links::find_links(&h);
-                            if !help_links.is_empty() {
-                                debug!("help links are: {:?}", help_links);
-                                for l in help_links {
-                                    let link_status = check_link(&l);
-                                    if link_status != LinkStatus::Ok
-                                        && link_status != LinkStatus::ProbablyBlocked
-                                    {
-                                        findings.push(Finding {
-                                            severity: Severity::Warning,
-                                            check: "dead_link",
-                                            symbol: Some(config_symbol.clone()),
-                                            message: format!(
-                                                "help text contains link {} with status {:?}",
-                                                l, link_status
-                                            ),
-                                        });
-                                    }
-                                }
-                            }
-                        }
+                        dead_link_checker.check_text(
+                            &h,
+                            args,
+                            &mut findings,
+                            Some(&config_symbol),
+                            "help text",
+                        );
                     }
 
                     Modules => {
