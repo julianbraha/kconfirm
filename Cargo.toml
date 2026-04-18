@@ -17,7 +17,7 @@ resolver = "3"
 rust-version = "1.87.0"
 
 [workspace.dependencies]
-nom-kconfig = { version = "0.8.0" }
+nom-kconfig = "0.9.0"
 
 log = "0.4.29"
 env_logger = "0.11.10"
