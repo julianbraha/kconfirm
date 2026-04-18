@@ -22,6 +22,8 @@ Detect dead code, dead links in help texts, and more. Unmet dependency detection
 
 ### Duplicate Dependencies
 
+[2026-04-18 "cpufreq: clean up dead dependencies on X86 in Kconfig"](https://lore.kernel.org/all/20260417230652.305414-1-julianbraha@gmail.com/)
+
 [2026-04-02 "stmmac: cleanup dead dependencies on STMMAC_PLATFORM and STMMAC_ETH in Kconfig"](https://lore.kernel.org/all/20260402145858.240231-1-julianbraha@gmail.com/)
 
 [2026-03-31 "mm/thp: dead code cleanup in Kconfig"](https://lore.kernel.org/all/20260331070730.33915-1-julianbraha@gmail.com/)
@@ -69,6 +71,10 @@ See [findings/dead_links_7_0_rc6.txt](/findings/dead_links_7_0_rc6.txt)
 [2026-04-12 "mainboard/opencellular/elgon/Kconfig: fix dead default for FMDFILE"](https://review.coreboot.org/c/coreboot/+/92141)
 
 [2026-04-12 "payloads/Kconfig: fix dead default for PAYLOAD_FIT_SUPPORT"](https://review.coreboot.org/c/coreboot/+/92140)
+
+## Submitted Patches: U-Boot
+
+[2026-04-15 "powerpc: fix dead default for SYS_L3_SIZE"](https://lists.denx.de/pipermail/u-boot/2026-April/614857.html)
 
 # Usage
 
