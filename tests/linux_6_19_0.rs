@@ -64,8 +64,8 @@ fn test_linux_kconfig_analysis_v6_19() {
     let line_count = stdout.lines().count();
 
     assert!(
-        line_count == 868,
-        "expected 868 lines, got {}\n See output:\n{}",
+        line_count == 929,
+        "expected 929 lines, got {}\n See output:\n{}",
         line_count,
         stdout
     );

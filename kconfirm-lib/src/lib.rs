@@ -10,13 +10,9 @@ mod dead_links;
 mod analyze;
 use analyze::*;
 
-use log::{debug, error};
+use log::error;
 use nom_kconfig::Entry;
-use nom_kconfig::Symbol;
-use nom_kconfig::attribute::AndExpression;
-use nom_kconfig::attribute::Atom;
-use nom_kconfig::attribute::Expression;
-use nom_kconfig::attribute::Term;
+
 use nom_kconfig::{KconfigInput, parse_kconfig};
 use std::collections::HashSet;
 
@@ -45,40 +41,19 @@ pub fn check_kconfig(
         if let Ok(parsed_kconfig_file) = kconfig_parse_result {
             let entries: Vec<Entry> = parsed_kconfig_file.1.entries;
 
-            match arch_config_option {
-                Some(aco) => {
-                    let arch_config_option_expression = Expression::Term(AndExpression::Term(
-                        Term::Atom(Atom::Symbol(Symbol::NonConstant(aco.to_owned()))),
-                    ));
-                    debug!("aco: {}", aco);
-                    for entry in entries {
-                        let cur_findings = entry_processor(
-                            &args,
-                            &mut symbol_table,
-                            entry,
-                            Vec::from([arch_config_option_expression.clone()]), // every config option in the arch kconfig file is defined only if the arch config option is enabled
-                            Vec::new(),
-                            Vec::new(),
-                            false, // we don't start in a choice.
-                        );
+            for entry in entries {
+                let cur_findings = entry_processor(
+                    &args,
+                    &mut symbol_table,
+                    entry,
+                    arch_config_option.clone(), // every config option in the arch kconfig file is defined only if the arch config option is enabled
+                    Vec::new(),
+                    Vec::new(),
+                    Vec::new(),
+                    false, // we don't start in a choice.
+                );
 
-                        findings.extend(cur_findings);
-                    }
-                }
-                None => {
-                    for entry in entries {
-                        let cur_findings = entry_processor(
-                            &args,
-                            &mut symbol_table,
-                            entry,
-                            Vec::new(),
-                            Vec::new(),
-                            Vec::new(),
-                            false, // we don't start in a choice.
-                        );
-                        findings.extend(cur_findings);
-                    }
-                }
+                findings.extend(cur_findings);
             }
         } else if let Err(e) = kconfig_parse_result {
             error!("FATAL: failed to parse kconfig, error is {:?}", e);
@@ -93,38 +68,38 @@ pub fn check_kconfig(
     for (var_symbol, type_info_ref) in inner_symtab.iter() {
         all_vars.push(var_symbol.clone());
 
-        for kconfig_redefinition in &type_info_ref.variable_info {
-            let mut all_dependencies =
-                HashSet::with_capacity(kconfig_redefinition.kconfig_dependencies.len());
-            for dep in &kconfig_redefinition.kconfig_dependencies {
-                if is_duplicate(&mut all_dependencies, dep.to_string()) {
-                    findings.push(Finding {
-                        severity: Severity::Warning,
-                        check: "duplicate_dependency",
-                        symbol: Some(var_symbol.clone()),
-                        message: format!("duplicate dependency on {:?}", dep.to_string()),
-                    });
-                }
-            }
+        for (arch_specific, kconfig_redefinitions) in &type_info_ref.variable_info {
+            for (definition_condition, kconfig_redefinition) in kconfig_redefinitions {
+                let mut all_dependencies =
+                    HashSet::with_capacity(kconfig_redefinition.kconfig_dependencies.len());
+                for dep in &kconfig_redefinition.kconfig_dependencies {
+                    if is_duplicate(&mut all_dependencies, dep.to_string()) {
+                        let message = if let Some(cur_arch) = &arch_specific {
+                            format!(
+                                "duplicate dependency on {:?} for architecture {:?}",
+                                dep.to_string(),
+                                cur_arch
+                            )
+                        } else {
+                            format!("duplicate dependency on {:?}", dep.to_string())
+                        };
 
-            let mut all_range_conditions = HashSet::new();
-
-            // TODO: consider an optional check for multiple ranges of the same value, but different conditions (style lint)
-            let mut already_unconditional_range = false;
-            for range in &kconfig_redefinition.kconfig_ranges {
-                // check for ranges that follow and unconditional one
-                if already_unconditional_range {
-                    findings.push(Finding {
-                        severity: Severity::Warning,
-                        check: "dead_range",
-                        symbol: Some(var_symbol.clone()),
-                        message: format!("dead range of {:?}", range),
-                    });
+                        findings.push(Finding {
+                            severity: Severity::Warning,
+                            check: "duplicate_dependency",
+                            symbol: Some(var_symbol.clone()),
+                            message,
+                        });
+                    }
                 }
 
-                // check for multiple ranges with the same condition
-                if let Some(f) = range.r#if.clone() {
-                    if is_duplicate(&mut all_range_conditions, f.to_string()) {
+                let mut all_range_conditions = HashSet::new();
+
+                // TODO: consider an optional check for multiple ranges of the same value, but different conditions (style lint)
+                let mut already_unconditional_range = false;
+                for range in &kconfig_redefinition.kconfig_ranges {
+                    // check for ranges that follow and unconditional one
+                    if already_unconditional_range {
                         findings.push(Finding {
                             severity: Severity::Warning,
                             check: "dead_range",
@@ -132,108 +107,119 @@ pub fn check_kconfig(
                             message: format!("dead range of {:?}", range),
                         });
                     }
+
+                    // check for multiple ranges with the same condition
+                    if let Some(f) = range.r#if.clone() {
+                        if is_duplicate(&mut all_range_conditions, f.to_string()) {
+                            findings.push(Finding {
+                                severity: Severity::Warning,
+                                check: "dead_range",
+                                symbol: Some(var_symbol.clone()),
+                                message: format!("dead range of {:?}", range),
+                            });
+                        }
+                    }
+
+                    if range.r#if.is_none() {
+                        already_unconditional_range = true;
+                    }
                 }
 
-                if range.r#if.is_none() {
-                    already_unconditional_range = true;
+                let mut all_selects = HashSet::with_capacity(kconfig_redefinition.selects.len());
+
+                // TODO: cleanup this code (especially the clones, and the if-handling)
+                for select in &kconfig_redefinition.selects {
+                    let select_var = select.clone().0;
+
+                    if let Some(select_cond) = &select.1 {
+                        if all_selects.contains(&(select_var.clone(), String::new())) {
+                            findings.push(Finding {
+                                severity: Severity::Warning,
+                                check: "dead_select",
+                                symbol: Some(var_symbol.clone()),
+                                message: format!("dead select of {:?}", select),
+                            });
+                        }
+
+                        if is_duplicate(&mut all_selects, (select_var, select_cond.to_string())) {
+                            findings.push(Finding {
+                                severity: Severity::Warning,
+                                check: "duplicate_select",
+                                symbol: Some(var_symbol.clone()),
+                                message: format!("duplicate select of {:?}", select),
+                            });
+                        }
+                    } else {
+                        // style check:
+                        //       - select X if Y
+                        //       - select X if Z
+                        //         (could just be `select X if Y || Z`)
+
+                        if is_duplicate(&mut all_selects, (select_var, String::new())) {
+                            findings.push(Finding {
+                                severity: Severity::Warning,
+                                check: "duplicate_select",
+                                symbol: Some(var_symbol.clone()),
+                                message: format!("duplicate select of {:?}", select),
+                            });
+                        }
+                    }
                 }
-            }
 
-            let mut all_selects = HashSet::with_capacity(kconfig_redefinition.selects.len());
+                let mut already_unconditional_default = false;
 
-            // TODO: cleanup this code (especially the clones, and the if-handling)
-            for select in &kconfig_redefinition.selects {
-                let select_var = select.clone().0;
+                // TODO: do we want to use the `with_capacity` initializer with `kconfig_redefinition.kconfig_defaults`?
+                let mut all_default_ifs = HashSet::new();
 
-                if let Some(select_cond) = &select.1 {
-                    if all_selects.contains(&(select_var.clone(), String::new())) {
+                // only used when style checks are enabled, consider wrapping this in Option
+                let mut all_default_vals = HashSet::new();
+
+                for default_and_if in &kconfig_redefinition.kconfig_defaults {
+                    if already_unconditional_default {
                         findings.push(Finding {
                             severity: Severity::Warning,
-                            check: "dead_select",
+                            check: "dead_default",
                             symbol: Some(var_symbol.clone()),
-                            message: format!("dead select of {:?}", select),
+                            message: format!(
+                                "dead default of {}",
+                                default_and_if.expression.to_string()
+                            ),
                         });
                     }
 
-                    if is_duplicate(&mut all_selects, (select_var, select_cond.to_string())) {
-                        findings.push(Finding {
-                            severity: Severity::Warning,
-                            check: "duplicate_select",
-                            symbol: Some(var_symbol.clone()),
-                            message: format!("duplicate select of {:?}", select),
-                        });
+                    if args.check_style {
+                        let default_val = default_and_if.expression.to_string();
+
+                        if is_duplicate(&mut all_default_vals, default_val.to_string()) {
+                            findings.push(Finding {
+                                severity: Severity::Style,
+                                check: "duplicate_default_value",
+                                symbol: Some(var_symbol.clone()),
+                                message: format!("duplicate default value of {:?}; consider combining the conditions with a logical-or: ||", default_val),
+                            });
+                        }
                     }
-                } else {
-                    // style check:
-                    //       - select X if Y
-                    //       - select X if Z
-                    //         (could just be `select X if Y || Z`)
 
-                    if is_duplicate(&mut all_selects, (select_var, String::new())) {
-                        findings.push(Finding {
-                            severity: Severity::Warning,
-                            check: "duplicate_select",
-                            symbol: Some(var_symbol.clone()),
-                            message: format!("duplicate select of {:?}", select),
-                        });
+                    let default_cond = &default_and_if.r#if;
+
+                    if let Some(d) = default_cond {
+                        // OrExpression doesn't implement `Eq` so we convert it to a string first.
+
+                        if is_duplicate(&mut all_default_ifs, d.to_string()) {
+                            findings.push(Finding {
+                                severity: Severity::Warning,
+                                check: "duplicate_default",
+                                symbol: Some(var_symbol.clone()),
+                                message: format!("duplicate default condition of {:?}", d),
+                            });
+                        }
                     }
-                }
-            }
 
-            let mut already_unconditional_default = false;
+                    let unconditional_default = default_cond.is_none();
 
-            // TODO: do we want to use the `with_capacity` initializer with `kconfig_redefinition.kconfig_defaults`?
-            let mut all_default_ifs = HashSet::new();
-
-            // only used when style checks are enabled, consider wrapping this in Option
-            let mut all_default_vals = HashSet::new();
-
-            for default_and_if in &kconfig_redefinition.kconfig_defaults {
-                if already_unconditional_default {
-                    findings.push(Finding {
-                        severity: Severity::Warning,
-                        check: "dead_default",
-                        symbol: Some(var_symbol.clone()),
-                        message: format!(
-                            "dead default of {}",
-                            default_and_if.expression.to_string()
-                        ),
-                    });
-                }
-
-                if args.check_style {
-                    let default_val = default_and_if.expression.to_string();
-
-                    if is_duplicate(&mut all_default_vals, default_val.to_string()) {
-                        findings.push(Finding {
-                            severity: Severity::Style,
-                            check: "duplicate_default_value",
-                            symbol: Some(var_symbol.clone()),
-                            message: format!("duplicate default value of {:?}", default_val),
-                        });
+                    if unconditional_default {
+                        already_unconditional_default = true;
                     }
-                }
-
-                let default_cond = &default_and_if.r#if;
-
-                // TODO: can we use a reference to default_cond?
-                if let Some(d) = default_cond {
-                    // OrExpression doesn't implement `Eq` so we convert it to a string first.
-
-                    if is_duplicate(&mut all_default_ifs, d.to_string()) {
-                        findings.push(Finding {
-                            severity: Severity::Warning,
-                            check: "duplicate_default",
-                            symbol: Some(var_symbol.clone()),
-                            message: format!("duplicate default condition of {:?}", d),
-                        });
-                    }
-                }
-
-                let unconditional_default = default_cond.is_none();
-
-                if unconditional_default {
-                    already_unconditional_default = true;
                 }
             }
         }

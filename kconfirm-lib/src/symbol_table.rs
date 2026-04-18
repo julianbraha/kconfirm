@@ -23,21 +23,28 @@ pub struct KconfigVarDependency {
 pub struct TypeInfo {
     pub kconfig_type: Option<Type>, // None when we don't know the type (it's just a dependency that popped up somewhere)
 
-    pub selected_by: Vec<(String, Vec<nom_kconfig::attribute::Expression>)>, // .0 only selects it when .1 is true.
+    // maps the selector to an (ARCH, select_cond)
+    // - if the ARCH is None, then it's not arch-specific
+    // if the select_cond is None, then it's unconditional
+    pub selected_by:
+        HashMap<String, Vec<(Option<String>, Option<nom_kconfig::attribute::Expression>)>>, // .0 only selects it when .1 is true.
 
     // there is one of these per entry (each entry expected to have a different definedness condition)
-    pub variable_info: Vec<VariableInfo>,
+    // maps architecture option name (or none if not arch-specific) to:
+    // [([condition], config definition)]
+    // - NOTE: there can be multiple partial definitions under the same condition, or mutually-exclusive conditions, or a subset condition.
+    pub variable_info:
+        HashMap<Option<String>, Vec<(Vec<nom_kconfig::attribute::Expression>, VariableInfo)>>, // the innermost `Vec<nom_kconfig::attribute::Expression>` represents each nested condition that was reached (we will basically need to AND them all)
 }
 
-// the dependencies and definedness condition are vectors because we may encounter multiple of these over time,
-//   so we never know until the very end what the condition is.
+// the dependencies are a vector because we may encounter multiple over time,
+//   so we won't know until the end what the condition is.
 #[derive(Debug, Clone)]
 pub struct VariableInfo {
     pub kconfig_dependencies: Vec<nom_kconfig::attribute::OrExpression>,
     pub kconfig_ranges: Vec<Range>,
     pub kconfig_defaults: Vec<DefaultAttribute>,
     pub visibility: Vec<nom_kconfig::attribute::OrExpression>,
-    pub definedness_condition: Vec<nom_kconfig::attribute::Expression>,
     pub selects: Vec<(String, Option<nom_kconfig::attribute::Expression>)>,
 }
 
@@ -49,21 +56,41 @@ impl TypeInfo {
         kconfig_ranges: Vec<Range>,
         kconfig_defaults: Vec<DefaultAttribute>,
         visibility: Vec<OrExpression>,
-        definedness_condition: Vec<nom_kconfig::attribute::Expression>,
-        selected_by: Vec<(String, Vec<nom_kconfig::attribute::Expression>)>,
+        arch: Option<String>,
+        definition_condition: Vec<OrExpression>,
+        selected_by: Option<(String, Option<nom_kconfig::attribute::Expression>)>,
         selects: Vec<(String, Option<nom_kconfig::attribute::Expression>)>,
     ) -> Self {
+        let mut selected_by_map = HashMap::new();
+
         TypeInfo {
             kconfig_type: kconfig_type,
-            selected_by,
-            variable_info: vec![VariableInfo {
-                kconfig_dependencies: raw_constraints,
-                kconfig_ranges,
-                kconfig_defaults,
-                visibility,
-                definedness_condition,
-                selects,
-            }],
+            selected_by: {
+                if let Some(s) = selected_by {
+                    selected_by_map.insert(s.0, vec![(arch.clone(), s.1)]);
+                }
+
+                selected_by_map
+            },
+            variable_info: {
+                let mut h = HashMap::new();
+
+                h.insert(
+                    arch,
+                    vec![(
+                        definition_condition,
+                        VariableInfo {
+                            kconfig_dependencies: raw_constraints,
+                            kconfig_ranges,
+                            kconfig_defaults,
+                            visibility,
+                            selects,
+                        },
+                    )],
+                );
+
+                h
+            },
         }
     }
 
@@ -73,17 +100,53 @@ impl TypeInfo {
         kconfig_ranges: Vec<Range>,
         kconfig_defaults: Vec<DefaultAttribute>,
         visibility: Vec<OrExpression>,
-        definedness_condition: Vec<nom_kconfig::attribute::Expression>,
+        arch: Option<String>,
+        definition_condition: Vec<OrExpression>,
         selects: Vec<(String, Option<OrExpression>)>,
     ) {
-        self.variable_info.push(VariableInfo {
-            kconfig_dependencies: raw_constraints,
-            kconfig_ranges,
-            kconfig_defaults,
-            visibility,
-            definedness_condition,
-            selects,
-        })
+        let existing_var_info = self.variable_info.get_mut(&arch);
+
+        match existing_var_info {
+            None => {
+                self.variable_info.insert(
+                    arch,
+                    vec![(
+                        definition_condition,
+                        VariableInfo {
+                            kconfig_dependencies: raw_constraints,
+                            kconfig_ranges,
+                            kconfig_defaults,
+                            visibility,
+                            selects,
+                        },
+                    )],
+                );
+            }
+            Some(existing) => {
+                existing.push((
+                    definition_condition,
+                    VariableInfo {
+                        kconfig_dependencies: raw_constraints,
+                        kconfig_ranges,
+                        kconfig_defaults,
+                        visibility,
+                        selects,
+                    },
+                ));
+            }
+        }
+
+        /* to see what the existing type definition was:
+
+        debug!("the existing data is: {:?}", &existing_var_info);
+        if let Some(existing) = existing_var_info {
+            assert!(existing.kconfig_dependencies.is_empty());
+            assert!(existing.kconfig_ranges.is_empty());
+            assert!(existing.kconfig_defaults.is_empty());
+            assert!(existing.visibility.is_empty());
+            assert!(existing.selects.is_empty());
+        }
+        */
     }
 }
 
@@ -91,7 +154,7 @@ impl TypeInfo {
 // the defaults should each be handled separately.
 pub struct ChoiceData {
     //pub inner_vars: Vec<String>,
-    pub definedness: Vec<OrExpression>,
+    pub arch: Option<String>,
     pub visibility: Option<OrExpression>,
     pub dependencies: Vec<OrExpression>, // this is the menu's dependencies (and inherited dependencies from the file)
     pub defaults: Vec<DefaultAttribute>, // these are each of the conditional defaults for the choice
@@ -137,8 +200,9 @@ impl SymbolTable {
         kconfig_defaults: Vec<DefaultAttribute>,
 
         visibility: Vec<OrExpression>,
-        definedness_condition: Vec<nom_kconfig::attribute::Expression>,
-        selected_by: Vec<(String, Vec<nom_kconfig::attribute::Expression>)>,
+        arch: Option<String>,
+        definition_condition: Vec<OrExpression>,
+        selected_by: Option<(String, Option<nom_kconfig::attribute::Expression>)>,
         selects: Vec<(String, Option<nom_kconfig::attribute::Expression>)>,
     ) {
         let existing = self.raw.remove(&var);
@@ -154,7 +218,8 @@ impl SymbolTable {
                         kconfig_ranges,
                         kconfig_defaults,
                         visibility,
-                        definedness_condition,
+                        arch,
+                        definition_condition,
                         selected_by,
                         selects,
                     ),
@@ -176,22 +241,44 @@ impl SymbolTable {
                 }
 
                 // we always want to extend the selectors list.
-                existing_type_info.selected_by.extend(selected_by);
-                // we only want to use this add_variable_info when there's something different in it.
-                if !raw_constraints.is_empty()
-                    || !kconfig_ranges.is_empty()
-                    || !kconfig_defaults.is_empty()
-                    || !definedness_condition.is_empty()
-                {
-                    existing_type_info.add_variable_info(
-                        raw_constraints,
-                        kconfig_ranges,
-                        kconfig_defaults,
-                        visibility,
-                        definedness_condition,
-                        selects,
-                    );
+
+                if let Some(select_info) = selected_by {
+                    let existing_select_info =
+                        existing_type_info.selected_by.get_mut(&select_info.0);
+                    match existing_select_info {
+                        None => {
+                            existing_type_info
+                                .selected_by
+                                .insert(select_info.0, vec![(arch.clone(), select_info.1)]);
+                        }
+                        Some(extisting_select_info) => {
+                            extisting_select_info.append(&mut vec![(arch.clone(), select_info.1)]);
+                        }
+                    }
                 }
+
+                /*
+                 * what if we check for an existing VariableInfo with the same definedness condition,
+                 * and merge this info with that one?
+                 *
+                 * otherwise, we can check why we're reaching this line multiple times for the same config option
+                 * under the same definedness condition
+                 */
+                debug!("adding a variable info for var {:?}", var);
+                existing_type_info.add_variable_info(
+                    raw_constraints,
+                    kconfig_ranges,
+                    kconfig_defaults,
+                    visibility,
+                    arch,
+                    definition_condition,
+                    selects,
+                );
+
+                // TODO: options can be redefined differently under different IF-conditions, see TCP_CONG_CUBIC
+                //       - has nothing to do with arch!
+                //       - how do we handle these?
+                //       - AND I think if they're "redefined" under the same conditions, then you just add the attributes together!
 
                 self.raw.insert(var, existing_type_info);
             }

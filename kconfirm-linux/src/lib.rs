@@ -62,6 +62,7 @@ pub fn get_arch_kconfig_files(
 
     // the Kconfig.debug files in each architecture aren't sourced, so we need to collect them and any other kconfig files recursively
     for dir_entry in walkdir::WalkDir::new(arch_dir_path)
+        .max_depth(2)
         .into_iter()
         .filter_map(Result::ok)
         .filter(|e| e.file_type().is_file())

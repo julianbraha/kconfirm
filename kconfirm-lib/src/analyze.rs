@@ -147,14 +147,15 @@ pub fn entry_processor(
     args: &AnalysisArgs,
     symbol_table: &mut SymbolTable,
     entry: Entry,
-    old_definedness_condition: Vec<Expression>, // pass a fresh vector on the first call (no definedness condition)
+    arch: Option<String>, // Some(ARCH_OPTION_NAME) if the inclusion & definition of the entry is arch-specific, 'None' o/w
+    definition_condition: Vec<Expression>, // this is the condition (coming from if-statements) that determines if the config definition happens or not.
     old_visibility_condition: Vec<Expression>, // pass a fresh vector on the first call (visible by default)
     old_dependencies: Vec<Expression>, // pass a fresh vector on the first call (no dependencies)
     is_in_a_choice: bool, // this value will get passed down with each recursive call (because you could have choice->source->config/bool)
 ) -> Vec<Finding> {
     let mut findings = Vec::new(); // will return this later
 
-    let cur_definedness_condition = old_definedness_condition.clone();
+    let mut cur_definition_condition = definition_condition.clone();
 
     // CHOICE passes down its visibility to the options inside of it.
     let mut cur_visibility_condition = old_visibility_condition.clone();
@@ -342,13 +343,18 @@ pub fn entry_processor(
                         Type::Bool(_) | Type::DefBool(_) => {
                             // expected in a choice...
                         }
-                        _ => unreachable!("expected only bool inside choice. got {:?}", kt),
+
+                        _ => {
+                            // TODO: old versions of linux (like 5.4.4) have tristates in the choice
+                            //       - u-boot also currently has hex options in the choice!
+                            warn!("found something unexpected in a choice-statement: {:?}", kt);
+                        }
                     }
                 }
             }
 
             // at the end, add the file's cur_dependencies to this var's invididual dependencies.
-            kconfig_dependencies.extend(cur_dependencies);
+            kconfig_dependencies.extend(cur_dependencies.clone());
             symbol_table.merge_insert_new_solved(
                 config_symbol.clone(),
                 kconfig_type,
@@ -357,8 +363,9 @@ pub fn entry_processor(
                 kconfig_ranges,
                 kconfig_defaults,
                 cur_visibility_condition.clone(),
-                cur_definedness_condition.clone(),
-                Vec::new(),
+                arch.clone(),
+                cur_definition_condition.clone(),
+                None,
                 kconfig_selects
                     .clone()
                     .into_iter()
@@ -376,15 +383,12 @@ pub fn entry_processor(
                         Vec::new(),
                         Vec::new(),
                         Vec::new(),
-                        Vec::new(),
-                        vec![(config_symbol.clone(), cur_definedness_condition.clone())],
+                        arch.clone(),
+                        cur_definition_condition.clone(),
+                        Some((config_symbol.clone(), None)),
                         Vec::new(),
                     ),
                     Some(select_condition) => {
-                        let mut select_and_definedness_condition =
-                            cur_definedness_condition.clone();
-                        select_and_definedness_condition.push(select_condition);
-
                         symbol_table.merge_insert_new_solved(
                             select.symbol,
                             None,
@@ -392,8 +396,9 @@ pub fn entry_processor(
                             Vec::new(),
                             Vec::new(),
                             Vec::new(),
-                            Vec::new(),
-                            vec![(config_symbol.clone(), select_and_definedness_condition)],
+                            arch.clone(),
+                            cur_definition_condition.clone(),
+                            Some((config_symbol.clone(), Some(select_condition))),
                             Vec::new(),
                         );
                     }
@@ -419,7 +424,8 @@ pub fn entry_processor(
                     args,
                     symbol_table,
                     inner_entry,
-                    cur_definedness_condition.clone(),
+                    arch.clone(),
+                    cur_definition_condition.clone(),
                     existing_visibility_with_menu_dependencies.clone(),
                     existing_dependencies_with_menu_dependencies.clone(),
                     is_in_a_choice,
@@ -472,7 +478,8 @@ pub fn entry_processor(
                             args,
                             symbol_table,
                             inner_entry,
-                            cur_definedness_condition.clone(),
+                            arch.clone(),
+                            cur_definition_condition.clone(),
                             cur_visibility_condition.clone(),
                             existing_dependencies_with_choice_dependencies.clone(),
                             true,
@@ -484,9 +491,8 @@ pub fn entry_processor(
                         // if-statements within choice-statements are not present (right now) in linux, coreboot, or openwrt.
                         // is present in u-boot!!!
 
-                        let new_dependency = i.condition;
-
-                        cur_dependencies.push(new_dependency);
+                        cur_dependencies.push(i.condition.clone());
+                        cur_definition_condition.push(i.condition);
 
                         for inner_entry in i.entries {
                             // recursive call
@@ -494,7 +500,8 @@ pub fn entry_processor(
                                 args,
                                 symbol_table,
                                 inner_entry,
-                                cur_definedness_condition.clone(),
+                                arch.clone(),
+                                cur_definition_condition.clone(),
                                 cur_visibility_condition.clone(),
                                 cur_dependencies.clone(),
                                 is_in_a_choice,
@@ -513,7 +520,7 @@ pub fn entry_processor(
 
             let choice_data = ChoiceData {
                 //inner_vars: contained_vars,
-                definedness: cur_definedness_condition,
+                arch,
                 visibility: choice_visibility_condition,
                 dependencies: existing_dependencies_with_choice_dependencies,
                 defaults: defaults,
@@ -532,7 +539,8 @@ pub fn entry_processor(
                         args,
                         symbol_table,
                         inner_entry,
-                        cur_definedness_condition.clone(),
+                        arch.clone(),
+                        cur_definition_condition.clone(),
                         cur_visibility_condition.clone(),
                         cur_dependencies.clone(),
                         is_in_a_choice,
@@ -543,11 +551,10 @@ pub fn entry_processor(
             }
         }
 
-        // this is to be treated as a dependency, not a visibility.
+        // this is to be treated as a dependency, and a condition for a config definition.
         If(i) => {
-            let new_dependency = i.condition;
-
-            cur_dependencies.push(new_dependency);
+            cur_definition_condition.push(i.condition.clone());
+            cur_dependencies.push(i.condition);
 
             for inner_entry in i.entries {
                 // recursive call
@@ -555,7 +562,8 @@ pub fn entry_processor(
                     args,
                     symbol_table,
                     inner_entry,
-                    cur_definedness_condition.clone(),
+                    arch.clone(),
+                    cur_definition_condition.clone(),
                     cur_visibility_condition.clone(),
                     cur_dependencies.clone(),
                     is_in_a_choice,
