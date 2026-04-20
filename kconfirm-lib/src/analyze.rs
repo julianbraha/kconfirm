@@ -502,8 +502,6 @@ fn handle_choice(
 
     // we are going to add the dependencies of the choice to the dependencies of the entries.
     //   we start with the dependencies inherited from the file
-    //let mut existing_dependencies_with_choice_dependencies = child_ctx.dependencies.clone();
-
     let mut choice_visibility_condition = None;
     let mut defaults = Vec::new();
     for attribute in entry.options {
@@ -530,30 +528,8 @@ fn handle_choice(
     // all of the variables in the choice menu
     //let mut contained_vars = Vec::with_capacity(c.entries.len());
     let nested_entries = entry.entries;
-    for inner_entry in nested_entries {
-        // just want to make sure that there's nothing unexpected in the choice (like a nested choice...)
-        match inner_entry {
-            Config(_) | Comment(_) | Source(_) => {
-                // TODO: check the comment and source for dead links
 
-                process_entry(args, symtab, inner_entry, child_ctx.clone(), findings);
-            }
-            If(i) => {
-                // if-statements within choice-statements are not present (right now) in linux, coreboot, or openwrt.
-                // is present in u-boot!!!
-
-                child_ctx = child_ctx.with_dep(i.condition.clone());
-                child_ctx = child_ctx.with_definition(i.condition);
-
-                recurse_entries(args, symtab, i.entries, child_ctx.clone(), findings);
-            }
-            _ => {
-                unreachable!("unexpected thing in a choice: {:?}", inner_entry);
-            }
-        }
-
-        //contained_vars.append(&mut processed_var);
-    }
+    recurse_entries(args, symtab, nested_entries, child_ctx.clone(), findings);
 
     let choice_data = ChoiceData {
         //inner_vars: contained_vars,
