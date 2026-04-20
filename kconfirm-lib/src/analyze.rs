@@ -483,10 +483,8 @@ fn handle_menu(
     }
 
     let nested_entries = entry.entries;
-    for inner_entry in nested_entries {
-        // recursive call (indirectly: process_entry calls this function, handle_menu())
-        process_entry(args, symtab, inner_entry, child_ctx.clone(), findings);
-    }
+
+    recurse_entries(args, symtab, nested_entries, child_ctx.clone(), findings);
 }
 
 fn handle_choice(
@@ -547,10 +545,7 @@ fn handle_choice(
                 child_ctx = child_ctx.with_dep(i.condition.clone());
                 child_ctx = child_ctx.with_definition(i.condition);
 
-                for inner_entry in i.entries {
-                    // recursive call
-                    process_entry(args, symtab, inner_entry, child_ctx.clone(), findings);
-                }
+                recurse_entries(args, symtab, i.entries, child_ctx.clone(), findings);
             }
             _ => {
                 unreachable!("unexpected thing in a choice: {:?}", inner_entry);
@@ -581,10 +576,8 @@ fn handle_if(
     child_ctx = child_ctx.with_definition(entry.condition.clone());
     child_ctx = child_ctx.with_dep(entry.condition);
     let nested_entries = entry.entries;
-    for inner_entry in nested_entries {
-        // recursive call
-        process_entry(args, symtab, inner_entry, child_ctx.clone(), findings);
-    }
+
+    recurse_entries(args, symtab, nested_entries, child_ctx, findings);
 }
 
 fn handle_source(
@@ -597,10 +590,7 @@ fn handle_source(
     let sourced_kconfig = entry.entries;
 
     for sourced_kconfig in sourced_kconfig {
-        for inner_entry in sourced_kconfig.entries {
-            // recursive call
-            process_entry(args, symtab, inner_entry, ctx.clone(), findings);
-        }
+        recurse_entries(args, symtab, sourced_kconfig.entries, ctx.clone(), findings);
     }
 }
 
@@ -611,6 +601,8 @@ pub fn process_entry(
     ctx: Context,
     findings: &mut Vec<Finding>,
 ) {
+    // NOTE: in general, each handler should update the context as it encounters that construct.
+    //       e.g. Context.in_choice() should be called at the start of handle_choice(), not right before call to process_entry() when a choice is found and process_entry is called
     match entry {
         Entry::Config(c) | Entry::MenuConfig(c) => {
             handle_config(args, symtab, c, &ctx, findings);
