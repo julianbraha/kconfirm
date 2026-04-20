@@ -75,6 +75,8 @@ fn main() -> io::Result<()> {
                 .collect();
             findings = check_kconfig(analysis_args, kconfig_inputs);
         }
+
+        // NOTE: seaBIOS also does the same thing (uses the directory a level above its root kconfig)
         (None, Some(coreboot_path), None) => {
             let root_kconfig_path = PathBuf::from("src/Kconfig");
             let root_kconfig_file = KconfigFile::new(coreboot_path.clone(), root_kconfig_path);
@@ -127,10 +129,13 @@ fn main() -> io::Result<()> {
                 panic!(); // TODO: create a KconfigError type that has io errors and CLI usage errors
             }
 
-            let containing_dir = other_kconfig_path.parent().expect("kconfig file is in a directory");
+            let containing_dir = other_kconfig_path
+                .parent()
+                .expect("kconfig file is in a directory");
             debug!("attempting to parse using directory: {:?}", &containing_dir);
-            let root_kconfig_file = KconfigFile::new(containing_dir.to_path_buf(), other_kconfig_path);
-            let file_contents = root_kconfig_file.read_to_string()?;
+            let root_kconfig_file =
+                KconfigFile::new(containing_dir.to_path_buf(), other_kconfig_path);
+            let file_contents = root_kconfig_file.read_to_string().unwrap();
             let kconfig_input = KconfigInput::new_extra(&file_contents, root_kconfig_file);
             let kconfig_inputs = vec![(None, kconfig_input)];
             findings = check_kconfig(analysis_args, kconfig_inputs);

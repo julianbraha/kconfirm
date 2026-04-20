@@ -100,7 +100,7 @@ pub fn get_arch_kconfig_files(
                 let arch_dir = n.to_str().unwrap();
                 debug!("arch_dir: {}", arch_dir);
                 if linux_root.join("arch").join(arch_dir).is_dir() {
-                    let arch_config_option = arch_dir_to_config(&arch_dir);
+                    let arch_config_option = arch_dir_to_config(arch_dir);
                     let arch_kconfig = LinuxKconfig {
                         arch_config_option: Some(arch_config_option),
                         file_contents: cur_kconfig_file.read_to_string()?,

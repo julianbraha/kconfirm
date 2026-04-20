@@ -123,6 +123,7 @@ impl TypeInfo {
                 );
             }
             Some(existing) => {
+                debug!("the existing variable info is {:?}", existing);
                 existing.push((
                     definition_condition,
                     VariableInfo {

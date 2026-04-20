@@ -42,18 +42,14 @@ pub fn check_kconfig(
             let entries: Vec<Entry> = parsed_kconfig_file.1.entries;
 
             for entry in entries {
-                let cur_findings = entry_processor(
-                    &args,
-                    &mut symbol_table,
-                    entry,
-                    arch_config_option.clone(), // every config option in the arch kconfig file is defined only if the arch config option is enabled
-                    Vec::new(),
-                    Vec::new(),
-                    Vec::new(),
-                    false, // we don't start in a choice.
-                );
-
-                findings.extend(cur_findings);
+                let ctx = Context {
+                    arch: arch_config_option.clone(),
+                    definition_condition: Vec::new(),
+                    visibility: Vec::new(),
+                    dependencies: Vec::new(),
+                    in_choice: false,
+                };
+                process_entry(&args, &mut symbol_table, entry, ctx, &mut findings);
             }
         } else if let Err(e) = kconfig_parse_result {
             error!("FATAL: failed to parse kconfig, error is {:?}", e);
@@ -69,7 +65,8 @@ pub fn check_kconfig(
         all_vars.push(var_symbol.clone());
 
         for (arch_specific, kconfig_redefinitions) in &type_info_ref.variable_info {
-            for (definition_condition, kconfig_redefinition) in kconfig_redefinitions {
+            // NOTE: the definition condition is currently unused, but will be needed for SMT solving later.
+            for (_definition_condition, kconfig_redefinition) in kconfig_redefinitions {
                 let mut all_dependencies =
                     HashSet::with_capacity(kconfig_redefinition.kconfig_dependencies.len());
                 for dep in &kconfig_redefinition.kconfig_dependencies {
@@ -180,10 +177,7 @@ pub fn check_kconfig(
                             severity: Severity::Warning,
                             check: "dead_default",
                             symbol: Some(var_symbol.clone()),
-                            message: format!(
-                                "dead default of {}",
-                                default_and_if.expression.to_string()
-                            ),
+                            message: format!("dead default of {}", default_and_if.expression),
                         });
                     }
 
