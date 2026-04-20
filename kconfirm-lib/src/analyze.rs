@@ -194,19 +194,23 @@ fn recurse_entries(
     }
 }
 
-pub fn analyze(entries: Vec<Entry>, args: &AnalysisArgs) -> Vec<Finding> {
-    let mut symtab = SymbolTable::new();
+pub fn analyze(
+    args: &AnalysisArgs,
+    symtab: &mut SymbolTable,
+    arch: Option<String>,
+    entries: Vec<Entry>,
+) -> Vec<Finding> {
     let mut findings = Vec::new();
 
     let ctx = Context {
-        arch: None,
+        arch,
         definition_condition: vec![],
         visibility: vec![],
         dependencies: vec![],
         in_choice: false,
     };
 
-    recurse_entries(args, &mut symtab, entries, ctx, &mut findings);
+    recurse_entries(args, symtab, entries, ctx, &mut findings);
 
     findings
 }
@@ -224,7 +228,7 @@ fn handle_config(
         config_symbol
     );
 
-    let mut child_ctx = ctx.clone();
+    let mut child_ctx = ctx.child();
 
     let mut config_type = None;
     let mut kconfig_dependencies = Vec::new();
@@ -464,7 +468,7 @@ fn handle_menu(
 ) {
     // menus can set the visibility of their menu items
 
-    let mut child_ctx = ctx.clone();
+    let mut child_ctx = ctx.child();
 
     if !entry.depends_on.is_empty() {
         debug!(
@@ -495,7 +499,8 @@ fn handle_choice(
     debug!("the attributes of the choice are: {:?}", entry.options);
     debug!("the entries of the choice are: {:?}", entry.entries);
 
-    let mut child_ctx = ctx.clone();
+    let mut child_ctx = ctx.child();
+    child_ctx = child_ctx.in_choice();
 
     // we are going to add the dependencies of the choice to the dependencies of the entries.
     //   we start with the dependencies inherited from the file
@@ -572,7 +577,7 @@ fn handle_if(
     ctx: &Context,
     findings: &mut Vec<Finding>,
 ) {
-    let mut child_ctx = ctx.clone();
+    let mut child_ctx = ctx.child();
     child_ctx = child_ctx.with_definition(entry.condition.clone());
     child_ctx = child_ctx.with_dep(entry.condition);
     let nested_entries = entry.entries;

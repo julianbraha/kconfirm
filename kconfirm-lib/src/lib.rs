@@ -41,16 +41,8 @@ pub fn check_kconfig(
         if let Ok(parsed_kconfig_file) = kconfig_parse_result {
             let entries: Vec<Entry> = parsed_kconfig_file.1.entries;
 
-            for entry in entries {
-                let ctx = Context {
-                    arch: arch_config_option.clone(),
-                    definition_condition: Vec::new(),
-                    visibility: Vec::new(),
-                    dependencies: Vec::new(),
-                    in_choice: false,
-                };
-                process_entry(&args, &mut symbol_table, entry, ctx, &mut findings);
-            }
+            let cur_findings = analyze(&args, &mut symbol_table, arch_config_option, entries);
+            findings.extend(cur_findings);
         } else if let Err(e) = kconfig_parse_result {
             error!("FATAL: failed to parse kconfig, error is {:?}", e);
             panic!();
