@@ -1,4 +1,3 @@
-// a1532790b90c714ab3e51555b68d4df1539ad72b
 use std::fs;
 use std::process::Command;
 
@@ -38,7 +37,6 @@ fn test_coreboot_kconfig_analysis_v24_12() {
 
     // run analysis via cli
     let output = Command::new("cargo")
-        //.args(["run", "--quiet", "--", "--linux-path"])
         .args([
             "run",
             "-p",
@@ -48,9 +46,7 @@ fn test_coreboot_kconfig_analysis_v24_12() {
             "--coreboot-dir-path",
         ])
         .arg(&extract_dir)
-        .arg("--check-style")
-        // no --check-dead-links, the results vary do to forces outside our control
-        // TODO: create a lighter test that there is >10 dead links or something.
+        .args(["--disable", "all", "--enable", "style"])
         .output()
         .expect("failed to run cargo");
 
@@ -61,7 +57,6 @@ fn test_coreboot_kconfig_analysis_v24_12() {
     );
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-
     let line_count = stdout.lines().count();
 
     assert!(

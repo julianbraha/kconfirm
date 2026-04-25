@@ -37,7 +37,6 @@ fn test_linux_kconfig_analysis_v6_19() {
 
     // run analysis via cli
     let output = Command::new("cargo")
-        //.args(["run", "--quiet", "--", "--linux-path"])
         .args([
             "run",
             "-p",
@@ -47,9 +46,8 @@ fn test_linux_kconfig_analysis_v6_19() {
             "--linux-dir-path",
         ])
         .arg(&extract_dir)
-        .arg("--check-style")
-        // no --check-dead-links, the results vary do to forces outside our control
-        // TODO: create a lighter test that there is >10 dead links or something.
+        // explicitly enable style, keep dead_links disabled
+        .args(["--enable", "style", "--disable", "dead_links"])
         .output()
         .expect("failed to run cargo");
 
@@ -60,7 +58,6 @@ fn test_linux_kconfig_analysis_v6_19() {
     );
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-
     let line_count = stdout.lines().count();
 
     assert!(

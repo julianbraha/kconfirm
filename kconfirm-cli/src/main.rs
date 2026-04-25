@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 use clap::{ArgGroup, Parser};
 use log::{debug, error, info};
+use std::collections::HashSet;
 use std::fs;
 use std::io;
 use std::path::PathBuf;
@@ -8,8 +9,10 @@ use std::path::PathBuf;
 use nom_kconfig::{KconfigFile, KconfigInput};
 
 use kconfirm_lib::AnalysisArgs;
+use kconfirm_lib::Check;
 use kconfirm_lib::check_kconfig;
 use kconfirm_lib::output::{Finding, print_findings};
+use kconfirm_lib::parse_check;
 use kconfirm_linux::collect_kconfig_root_files;
 
 #[derive(Parser, Debug)]
@@ -37,22 +40,44 @@ struct Args {
     #[arg(long)]
     other_kconfig_path: Option<PathBuf>,
 
-    // check for duplicate default values (style check)
-    #[arg(long)]
-    check_style: bool,
+    // enable specific checks (repeatable or comma-separated)
+    #[arg(long, value_delimiter = ',', num_args = 1..)]
+    enable: Vec<String>,
 
-    // check for dead links in the help texts
-    #[arg(long)]
-    check_dead_links: bool,
+    // disable specific checks
+    #[arg(long, value_delimiter = ',', num_args = 1..)]
+    disable: Vec<String>,
 }
 
 fn main() -> io::Result<()> {
     env_logger::init();
     let cli_args = Args::parse();
-    let analysis_args = AnalysisArgs {
-        check_style: cli_args.check_style,
-        check_dead_links: cli_args.check_dead_links,
-    };
+    let mut enabled_checks: HashSet<Check> = [
+        Check::DuplicateDependency,
+        Check::DeadRange,
+        Check::DeadSelect,
+        Check::DuplicateSelect,
+        Check::DeadDefault,
+        Check::DuplicateDefault,
+    ]
+    .into_iter()
+    .collect();
+
+    // apply --enable
+    for name in &cli_args.enable {
+        if let Some(c) = parse_check(name) {
+            enabled_checks.insert(c);
+        }
+    }
+
+    // apply --disable
+    for name in &cli_args.disable {
+        if let Some(c) = parse_check(name) {
+            enabled_checks.remove(&c);
+        }
+    }
+
+    let analysis_args = AnalysisArgs { enabled_checks };
 
     let findings: Vec<Finding>;
     match (
@@ -105,7 +130,6 @@ fn main() -> io::Result<()> {
 
             // TODO: ensure that if check_kconfig errors, then we still remove the dir and file that was created
             findings = check_kconfig(analysis_args, kconfig_inputs);
-
 
             if temp_kconfig.is_some() {
                 fs::remove_file(site_local_kconfig)?;

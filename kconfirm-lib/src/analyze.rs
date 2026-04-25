@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
 use crate::AnalysisArgs;
+use crate::Check;
 use crate::SymbolTable;
 use crate::dead_links::{self, LinkStatus, check_link};
 use crate::output::{Finding, Severity};
@@ -18,7 +19,7 @@ use nom_kconfig::entry::Menu;
 use nom_kconfig::entry::Source;
 use nom_kconfig::{
     Attribute::*,
-    Entry::{self, *},
+    Entry::{self},
 };
 use std::collections::HashSet;
 use std::option::Option;
@@ -46,6 +47,7 @@ impl AttributeGroupingChecker {
         }
     }
 
+    // doesn't modify `findings` if the style check is disabled
     fn check(
         &mut self,
         group: FunctionalAttributes,
@@ -54,7 +56,7 @@ impl AttributeGroupingChecker {
         symbol: &str,
         message: String,
     ) {
-        if !args.check_style {
+        if !args.is_enabled(Check::Style) {
             return;
         }
 
@@ -107,7 +109,7 @@ impl DeadLinkChecker {
         symbol: Option<&str>,
         context: &str,
     ) {
-        if !args.check_dead_links {
+        if !args.is_enabled(Check::DeadLinks) {
             return;
         }
 

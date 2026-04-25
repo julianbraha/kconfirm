@@ -16,13 +16,42 @@ use nom_kconfig::Entry;
 use nom_kconfig::{KconfigInput, parse_kconfig};
 use std::collections::HashSet;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Check {
+    Style,     // check for duplicate default values, and ungrouped attributes
+    DeadLinks, // check for dead links in the help texts
+    DuplicateDependency,
+    DeadRange,
+    DeadSelect,
+    DuplicateSelect,
+    DeadDefault,
+    DuplicateDefault,
+}
+
+pub fn parse_check(name: &str) -> Option<Check> {
+    match name {
+        "style" => Some(Check::Style),
+        "dead_links" => Some(Check::DeadLinks),
+        "duplicate_dependency" => Some(Check::DuplicateDependency),
+        "dead_range" => Some(Check::DeadRange),
+        "dead_select" => Some(Check::DeadSelect),
+        "duplicate_select" => Some(Check::DuplicateSelect),
+        "dead_default" => Some(Check::DeadDefault),
+        "duplicate_default" => Some(Check::DuplicateDefault),
+        _ => None,
+    }
+}
+
 #[derive(Clone)]
 pub struct AnalysisArgs {
     // check for duplicate default values
-    pub check_style: bool,
+    pub enabled_checks: HashSet<Check>,
+}
 
-    // check for dead links in the help texts
-    pub check_dead_links: bool,
+impl AnalysisArgs {
+    pub fn is_enabled(&self, check: Check) -> bool {
+        self.enabled_checks.contains(&check)
+    }
 }
 
 pub fn check_kconfig(
@@ -173,7 +202,7 @@ pub fn check_kconfig(
                         });
                     }
 
-                    if args.check_style {
+                    if args.is_enabled(Check::Style) {
                         let default_val = default_and_if.expression.to_string();
 
                         if is_duplicate(&mut all_default_vals, default_val.to_string()) {
