@@ -143,10 +143,6 @@ impl DeadLinkChecker {
     }
 }
 
-pub fn is_duplicate<T: Eq + std::hash::Hash>(set: &mut HashSet<T>, key: T) -> bool {
-    !set.insert(key)
-}
-
 #[derive(Clone)]
 pub struct Context {
     pub arch: Option<String>,

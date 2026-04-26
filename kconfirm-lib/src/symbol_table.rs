@@ -71,7 +71,7 @@ impl TypeInfo {
         selected_by: Option<(String, Option<Expression>)>,
         selects: Vec<(String, Option<Expression>)>,
     ) {
-        // type merge (unchanged logic)
+        // type merge
         match (&self.kconfig_type, &kconfig_type) {
             (None, Some(_)) => self.kconfig_type = kconfig_type,
             (Some(_), Some(new)) if Some(new) != self.kconfig_type.as_ref() => {
