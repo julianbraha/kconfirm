@@ -3,6 +3,7 @@ use std::fmt;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Severity {
+    Fatal,
     Error, // will be used for known bugs, e.g. unmet dependencies
     Warning,
     Style,
@@ -11,6 +12,7 @@ pub enum Severity {
 impl fmt::Display for Severity {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Severity::Fatal => write!(f, "FATAL  "),
             Severity::Error => write!(f, "ERROR  "),
             Severity::Warning => write!(f, "WARNING"),
             Severity::Style => write!(f, "STYLE   "),
