@@ -44,7 +44,7 @@ pub fn check_kconfig(
     }
 
     for (var_symbol, type_info) in &symbol_table.raw {
-        for (arch_specific, redefinitions) in &type_info.variable_info {
+        for (arch_specific, redefinitions) in &type_info.attribute_defs {
             for (_definition_condition, info) in redefinitions {
                 findings.extend(check_variable_info(&args, var_symbol, arch_specific, info));
             }

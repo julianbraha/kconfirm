@@ -152,9 +152,17 @@ pub struct Context {
     pub in_choice: bool,
 }
 
-// TODO: write a contstructor that just takes an arch
-
 impl Context {
+    fn with_arch(arch: Option<String>) -> Context {
+        Context {
+            arch,
+            definition_condition: vec![],
+            visibility: vec![],
+            dependencies: vec![],
+            in_choice: false,
+        }
+    }
+
     fn child(&self) -> Self {
         self.clone()
     }
@@ -200,13 +208,7 @@ pub fn analyze(
 ) -> Vec<Finding> {
     let mut findings = Vec::new();
 
-    let ctx = Context {
-        arch,
-        definition_condition: vec![],
-        visibility: vec![],
-        dependencies: vec![],
-        in_choice: false,
-    };
+    let ctx = Context::with_arch(arch);
 
     recurse_entries(args, symtab, entries, ctx, &mut findings);
 
