@@ -1,0 +1,13 @@
+config X
+    bool "x"
+
+config Z
+    bool "Z"
+
+config A
+    bool "A"
+
+config Y
+    def_bool "y" if Z
+    select X if A
+    default false

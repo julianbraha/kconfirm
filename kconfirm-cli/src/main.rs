@@ -153,13 +153,20 @@ fn main() -> io::Result<()> {
                 panic!(); // TODO: create a KconfigError type that has io errors and CLI usage errors
             }
 
-            let containing_dir = other_kconfig_path
+            let root_dir = other_kconfig_path
                 .parent()
-                .expect("kconfig file is in a directory");
-            debug!("attempting to parse using directory: {:?}", &containing_dir);
-            let root_kconfig_file =
-                KconfigFile::new(containing_dir.to_path_buf(), other_kconfig_path);
-            let file_contents = root_kconfig_file.read_to_string().unwrap();
+                .expect("kconfig file is in a directory")
+                .to_path_buf();
+
+            let relative_path = other_kconfig_path
+                .strip_prefix(&root_dir)
+                .unwrap_or(&other_kconfig_path)
+                .to_path_buf();
+
+            let root_kconfig_file = KconfigFile::new(root_dir, relative_path);
+
+            let file_contents = fs::read_to_string(&other_kconfig_path)?;
+
             let kconfig_input = KconfigInput::new_extra(&file_contents, root_kconfig_file);
             let kconfig_inputs = vec![(None, kconfig_input)];
             findings = check_kconfig(analysis_args, kconfig_inputs);

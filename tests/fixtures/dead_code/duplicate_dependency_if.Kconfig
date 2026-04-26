@@ -1,0 +1,10 @@
+config A
+    def_bool y
+
+if A
+
+config B
+    int
+    depends on A
+
+endif # A

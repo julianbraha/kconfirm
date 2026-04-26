@@ -1,0 +1,47 @@
+
+config X
+    bool "x"
+    default true
+    help
+        blah blah
+        this website should always be available: https://www.google.com/generate_204
+
+config Y
+    bool "y"
+    default true if X
+
+config MODULES
+    modules
+
+config Z
+    tristate "z"
+    depends on X
+
+config A
+    def_bool y
+    select X
+    imply Z
+
+if A
+
+config B
+    int
+
+config C
+    int "c"
+    range 0 2
+
+endif # A
+
+choice
+    prompt "this is a choice"
+    depends on X
+    default D
+
+    config D
+        bool "d"
+
+
+    config D
+        bool "e"
+endchoice

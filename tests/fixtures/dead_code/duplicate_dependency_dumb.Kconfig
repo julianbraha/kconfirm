@@ -1,0 +1,13 @@
+config X
+    bool "x"
+
+config Z
+    bool "z"
+
+config A
+    bool "a"
+
+config Y
+    bool "y"
+    depends on X
+    depends on X

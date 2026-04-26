@@ -1,0 +1,14 @@
+config X
+    bool "x"
+
+config Z
+    bool "Z"
+
+config A
+    bool "A"
+
+config Y
+    bool "y"
+    select X if Z
+    default true if Z
+    select A
