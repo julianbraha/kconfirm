@@ -21,8 +21,7 @@ pub enum Check {
     Style,     // check for duplicate default values, and ungrouped attributes
     DeadLinks, // check for dead links in the help texts
     DuplicateDependency,
-    DeadRange,
-    DeadSelect,
+    DuplicateRange,
     DuplicateSelect,
     DeadDefault,
     DuplicateDefault,
@@ -33,8 +32,7 @@ pub fn parse_check(name: &str) -> Option<Check> {
         "style" => Some(Check::Style),
         "dead_links" => Some(Check::DeadLinks),
         "duplicate_dependency" => Some(Check::DuplicateDependency),
-        "dead_range" => Some(Check::DeadRange),
-        "dead_select" => Some(Check::DeadSelect),
+        "dead_range" => Some(Check::DuplicateRange),
         "duplicate_select" => Some(Check::DuplicateSelect),
         "dead_default" => Some(Check::DeadDefault),
         "duplicate_default" => Some(Check::DuplicateDefault),

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 use clap::{ArgGroup, Parser};
-use log::{debug, error, info};
+use log::{error, info};
 use std::collections::HashSet;
 use std::fs;
 use std::io;
@@ -54,8 +54,7 @@ fn main() -> io::Result<()> {
     let cli_args = Args::parse();
     let mut enabled_checks: HashSet<Check> = [
         Check::DuplicateDependency,
-        Check::DeadRange,
-        Check::DeadSelect,
+        Check::DuplicateRange,
         Check::DuplicateSelect,
         Check::DeadDefault,
         Check::DuplicateDefault,
