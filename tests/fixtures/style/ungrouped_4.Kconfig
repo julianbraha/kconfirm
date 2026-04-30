@@ -1,5 +1,5 @@
 config X
-    bool "x"
+    bool
 
 config Z
     bool "Z"
@@ -10,4 +10,4 @@ config A
 config Y
     def_bool "y" if Z
     select X if A
-    default false
+    default n

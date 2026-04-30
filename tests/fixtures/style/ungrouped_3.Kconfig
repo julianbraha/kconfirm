@@ -1,14 +1,14 @@
 config X
-    bool "x"
+    bool
 
 config Z
     bool "Z"
 
 config A
-    bool "A"
+    bool
 
 config Y
     bool "y"
     select X if Z
-    default true if Z
+    default y if Z
     select A
