@@ -1,0 +1,13 @@
+config X
+    def_bool n
+    prompt "this is visible"
+    help
+        blah blah
+
+config Y
+    def_bool y
+    select Z
+    select X
+
+config Z
+    bool

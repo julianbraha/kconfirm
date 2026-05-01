@@ -18,6 +18,8 @@ use nom_kconfig::Entry;
 
 use nom_kconfig::{KconfigInput, parse_kconfig};
 
+use crate::checks::check_select_visible;
+
 pub fn check_kconfig(
     args: AnalysisArgs,
     kconfig_files: Vec<(Option<String>, KconfigInput)>,
@@ -48,6 +50,10 @@ pub fn check_kconfig(
             for (_definition_condition, info) in redefinitions {
                 findings.extend(check_variable_info(&args, var_symbol, arch_specific, info));
             }
+        }
+
+        if args.is_enabled(Check::SelectVisible) {
+            findings.extend(check_select_visible(var_symbol, type_info));
         }
     }
 

@@ -56,7 +56,7 @@ impl AttributeGroupingChecker {
         symbol: &str,
         message: String,
     ) {
-        if !args.is_enabled(Check::Style) {
+        if !args.is_enabled(Check::UngroupedAttribute) {
             return;
         }
 
@@ -77,7 +77,7 @@ impl AttributeGroupingChecker {
                 if self.finished_groups.contains(&group) {
                     findings.push(Finding {
                         severity: Severity::Style,
-                        check: "ungrouped_attribute",
+                        check: Check::UngroupedAttribute,
                         symbol: Some(symbol.to_string()),
                         message,
                     });
@@ -109,7 +109,7 @@ impl DeadLinkChecker {
         symbol: Option<&str>,
         context: &str,
     ) {
-        if !args.is_enabled(Check::DeadLinks) {
+        if !args.is_enabled(Check::DeadLink) {
             return;
         }
 
@@ -131,7 +131,7 @@ impl DeadLinkChecker {
             if status != LinkStatus::Ok && status != LinkStatus::ProbablyBlocked {
                 findings.push(Finding {
                     severity: Severity::Warning,
-                    check: "dead_link",
+                    check: Check::DeadLink,
                     symbol: symbol.map(|s| s.to_string()),
                     message: format!(
                         "{} contains link {} with status {:?}",
@@ -147,7 +147,7 @@ impl DeadLinkChecker {
 pub struct Context {
     pub arch: Option<String>,
     pub definition_condition: Vec<Expression>,
-    pub visibility: Vec<Expression>,
+    pub visibility: Vec<Option<Expression>>,
     pub dependencies: Vec<Expression>,
     pub in_choice: bool,
 }
@@ -172,7 +172,7 @@ impl Context {
         self
     }
 
-    fn with_visibility(mut self, cond: Expression) -> Self {
+    fn with_visibility(mut self, cond: Option<Expression>) -> Self {
         self.visibility.push(cond);
         self
     }
@@ -235,6 +235,7 @@ fn handle_config(
     let mut kconfig_selects: Vec<Select> = Vec::new();
     let mut kconfig_ranges = Vec::new();
     let mut kconfig_defaults = Vec::new();
+    let mut found_prompt = false;
 
     debug!("attributes are: {:?}", &entry.attributes);
     /*
@@ -265,7 +266,10 @@ fn handle_config(
                         format!("ungrouped default {}", db),
                     );
                 }
-                Type::Bool(_b) => {
+                Type::Bool(unconditional_prompt) => {
+                    if unconditional_prompt.is_some() {
+                        found_prompt = true;
+                    }
                     config_type = Some(kconfig_type);
                 }
 
@@ -288,10 +292,32 @@ fn handle_config(
                     kconfig_defaults.push(default_attribute);
                     config_type = Some(kconfig_type);
                 }
-                Type::Tristate(_ts) => config_type = Some(kconfig_type.clone()),
-                Type::Hex(_h) => config_type = Some(kconfig_type),
-                Type::Int(_i) => config_type = Some(kconfig_type),
-                Type::String(_s) => config_type = Some(kconfig_type),
+                Type::Tristate(unconditional_prompt) => {
+                    if unconditional_prompt.is_some() {
+                        found_prompt = true;
+                    }
+
+                    config_type = Some(kconfig_type.clone())
+                }
+                Type::Hex(unconditional_prompt) => {
+                    if unconditional_prompt.is_some() {
+                        found_prompt = true;
+                    }
+
+                    config_type = Some(kconfig_type);
+                }
+                Type::Int(unconditional_prompt) => {
+                    if unconditional_prompt.is_some() {
+                        found_prompt = true;
+                    }
+                    config_type = Some(kconfig_type);
+                }
+                Type::String(unconditional_prompt) => {
+                    if unconditional_prompt.is_some() {
+                        found_prompt = true;
+                    }
+                    config_type = Some(kconfig_type);
+                }
             },
             Default(default) => {
                 attribute_grouping_checker.check(
@@ -367,20 +393,24 @@ fn handle_config(
 
             // the prompt's option `if` determines "visibility"
             Prompt(prompt) => {
+                // TODO: once we have SMT solving, we can also check if the prompt condition is always true or never true (and therefore, effectively unconditional)
+
+                found_prompt = true;
                 if let Some(c) = prompt.r#if {
-                    child_ctx = child_ctx.with_visibility(c);
+                    child_ctx = child_ctx.with_visibility(Some(c));
                 }
             }
             Transitional => {
                 // doing nothing for transitional right now
             }
-            _defconfig_list => {
-                todo!(
-                    "Found a defconfig list for config option: {:?}, TODO: handle it!",
-                    &config_symbol
-                );
+            Optional | Visible(_) | Requires(_) | Option(_) => {
+                panic!("unexpected attribute encountered");
             }
         }
+    }
+
+    if !found_prompt {
+        child_ctx = child_ctx.with_visibility(None);
     }
 
     // there can be multiple entries that get merged. so we need to do the same for our symtab.
@@ -389,7 +419,7 @@ fn handle_config(
     // at the time of writing this, linux's kconfig only uses Bool inside Choice.
     // however, the kconfig documentation doesn't specify whether or not this is guaranteed to be the case.
     // we add this check to ensure that we don't cause undefined behavior in future linux versions if something changes...
-    if ctx.in_choice {
+    if child_ctx.in_choice {
         if let Some(kt) = &kconfig_type {
             match kt {
                 Type::Bool(_) | Type::DefBool(_) => {
@@ -406,7 +436,7 @@ fn handle_config(
     }
 
     // at the end, add the file's cur_dependencies to this var's invididual dependencies.
-    kconfig_dependencies.extend(ctx.dependencies.clone());
+    kconfig_dependencies.extend(child_ctx.dependencies.clone());
     symtab.merge_insert_new_solved(
         config_symbol.clone(),
         kconfig_type,
@@ -414,9 +444,9 @@ fn handle_config(
         //z3_dependency,
         kconfig_ranges,
         kconfig_defaults,
-        ctx.visibility.clone(),
-        ctx.arch.clone(),
-        ctx.definition_condition.clone(),
+        child_ctx.visibility.clone(),
+        child_ctx.arch.clone(),
+        child_ctx.definition_condition.clone(),
         None,
         kconfig_selects
             .clone()
@@ -435,8 +465,8 @@ fn handle_config(
                 Vec::new(),
                 Vec::new(),
                 Vec::new(),
-                ctx.arch.clone(),
-                ctx.definition_condition.clone(),
+                child_ctx.arch.clone(),
+                child_ctx.definition_condition.clone(),
                 Some((config_symbol.clone(), None)),
                 Vec::new(),
             ),
@@ -448,8 +478,8 @@ fn handle_config(
                     Vec::new(),
                     Vec::new(),
                     Vec::new(),
-                    ctx.arch.clone(),
-                    ctx.definition_condition.clone(),
+                    child_ctx.arch.clone(),
+                    child_ctx.definition_condition.clone(),
                     Some((config_symbol.clone(), Some(select_condition))),
                     Vec::new(),
                 );
@@ -478,7 +508,7 @@ fn handle_menu(
 
     for dep in entry.depends_on {
         child_ctx = child_ctx.with_dep(dep.clone());
-        child_ctx = child_ctx.with_visibility(dep); // not a typo, the config options inside of a menu are only visible if the menu's dependencies are satisfied
+        child_ctx = child_ctx.with_visibility(Some(dep)); // not a typo, the config options inside of a menu are only visible if the menu's dependencies are satisfied
     }
 
     let nested_entries = entry.entries;
@@ -517,7 +547,7 @@ fn handle_choice(
             Prompt(prompt) => {
                 choice_visibility_condition = prompt.r#if;
                 if let Some(i) = choice_visibility_condition.clone() {
-                    child_ctx = child_ctx.with_visibility(i);
+                    child_ctx = child_ctx.with_visibility(Some(i));
                 }
             }
             _ => debug!("skipping attribute {:?} for choice", attribute),

@@ -767,11 +767,11 @@ dependencies = [
 
 [[package]]
 name = "kconfirm"
-version = "0.6.0"
+version = "0.8.0"
 
 [[package]]
 name = "kconfirm-cli"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "clap",
  "env_logger",
@@ -783,7 +783,7 @@ dependencies = [
 
 [[package]]
 name = "kconfirm-lib"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "env_logger",
  "log",
@@ -794,7 +794,7 @@ dependencies = [
 
 [[package]]
 name = "kconfirm-linux"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "clap",
  "env_logger",
