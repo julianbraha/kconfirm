@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
 use regex::Regex;
-use reqwest::blocking::Client;
+use std::sync::OnceLock;
 use std::time::Duration;
+use ureq::{
+    Agent,
+    tls::{RootCerts, TlsConfig, TlsProvider},
+};
 
 /*
  * during testing, "Unreachable" and "ServerError" seem to be a 50/50
@@ -18,6 +22,27 @@ pub enum LinkStatus {
     UnsupportedScheme(String), // e.g. ftp, git
 }
 
+static AGENT: OnceLock<Agent> = OnceLock::new();
+
+fn agent() -> &'static Agent {
+    const TEN_SECONDS: Duration = Duration::from_secs(10);
+
+    AGENT.get_or_init(|| {
+        Agent::config_builder()
+            .timeout_global(Some(TEN_SECONDS))
+            .max_redirects(0) // we want to output any redirects as a finding
+            .http_status_as_error(false)
+            .tls_config(
+                TlsConfig::builder()
+                    .provider(TlsProvider::NativeTls)
+                    .root_certs(RootCerts::PlatformVerifier)
+                    .build(),
+            )
+            .build()
+            .into()
+    })
+}
+
 pub fn check_link(url: &str) -> LinkStatus {
     if let Some(scheme) = url.split("://").next() {
         match scheme {
@@ -30,12 +55,7 @@ pub fn check_link(url: &str) -> LinkStatus {
 }
 
 fn check_http(url: &str) -> LinkStatus {
-    let client = Client::builder()
-        .timeout(Duration::from_secs(10))
-        .build()
-        .unwrap();
-
-    match client.head(url).send() {
+    match agent().head(url).call() {
         Ok(response) => match response.status().as_u16() {
             200..=299 => LinkStatus::Ok,
             301 | 302 => {

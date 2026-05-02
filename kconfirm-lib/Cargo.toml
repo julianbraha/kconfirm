@@ -6,7 +6,7 @@ rust-version.workspace = true
 
 [dependencies]
 nom-kconfig = { workspace = true }
-reqwest = { version = "0.13", features = ["blocking"] }
+ureq = { version = "3.3", default-features = false, features = ["native-tls"] }
 regex = "1.12"
 log = { workspace = true }
 env_logger = { workspace = true }
