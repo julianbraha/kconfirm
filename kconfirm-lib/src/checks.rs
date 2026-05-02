@@ -87,14 +87,17 @@ pub fn check_variable_info(
         findings.extend(check_duplicate_selects(var_symbol, info));
     }
 
-    if args.is_enabled(Check::DeadDefault)
-        || args.is_enabled(Check::DuplicateDefault)
-        || args.is_enabled(Check::DuplicateDefaultValue)
-    {
+    if args.is_enabled(Check::DuplicateDefaultValue) {
+        findings.extend(check_defaults(var_symbol, info, args));
+    }
+
+    if args.is_enabled(Check::DeadDefault) {
+        findings.extend(check_defaults(var_symbol, info, args));
+    }
+
+    if args.is_enabled(Check::DuplicateDefault) {
         findings.extend(check_defaults(
-            var_symbol,
-            info,
-            args.is_enabled(Check::DuplicateDefaultValue), // duplicate default values is a style check
+            var_symbol, info, args, // duplicate default values is a style check
         ));
     }
 
@@ -284,7 +287,7 @@ fn check_duplicate_selects(var_symbol: &str, info: &AttributeDef) -> Vec<Finding
     findings
 }
 
-fn check_defaults(var_symbol: &str, info: &AttributeDef, style_enabled: bool) -> Vec<Finding> {
+fn check_defaults(var_symbol: &str, info: &AttributeDef, args: &AnalysisArgs) -> Vec<Finding> {
     let mut findings = Vec::new();
     let mut seen_conditions = HashSet::new();
     let mut seen_values = HashSet::new();
@@ -293,7 +296,7 @@ fn check_defaults(var_symbol: &str, info: &AttributeDef, style_enabled: bool) ->
     for default in &info.kconfig_defaults {
         let val_str = default.expression.to_string();
 
-        if already_unconditional {
+        if already_unconditional && args.is_enabled(Check::DeadDefault) {
             findings.push(Finding {
                 severity: Severity::Warning,
                 check: Check::DeadDefault,
@@ -302,7 +305,7 @@ fn check_defaults(var_symbol: &str, info: &AttributeDef, style_enabled: bool) ->
             });
         }
 
-        if style_enabled {
+        if args.is_enabled(Check::DuplicateDefaultValue) {
             if default.r#if.is_some() && is_duplicate(&mut seen_values, val_str.clone()) {
                 findings.push(Finding {
                     severity: Severity::Style,
@@ -320,19 +323,23 @@ fn check_defaults(var_symbol: &str, info: &AttributeDef, style_enabled: bool) ->
             Some(cond) => {
                 if is_duplicate(&mut seen_conditions, cond.to_string()) {
                     if is_duplicate(&mut seen_values, val_str.clone()) {
-                        findings.push(Finding {
-                            severity: Severity::Warning,
-                            check: Check::DuplicateDefault,
-                            symbol: Some(var_symbol.to_owned()),
-                            message: format!("duplicate default condition of {:?}", cond),
-                        });
+                        if args.is_enabled(Check::DuplicateDefault) {
+                            findings.push(Finding {
+                                severity: Severity::Warning,
+                                check: Check::DuplicateDefault,
+                                symbol: Some(var_symbol.to_owned()),
+                                message: format!("duplicate default condition of {:?}", cond),
+                            });
+                        }
                     } else {
-                        findings.push(Finding {
-                            severity: Severity::Warning,
-                            check: Check::DeadDefault,
-                            symbol: Some(var_symbol.to_owned()),
-                            message: format!("dead default of {}", val_str),
-                        });
+                        if args.is_enabled(Check::DeadDefault) {
+                            findings.push(Finding {
+                                severity: Severity::Warning,
+                                check: Check::DeadDefault,
+                                symbol: Some(var_symbol.to_owned()),
+                                message: format!("dead default of {}", val_str),
+                            });
+                        }
                     }
                 }
             }
