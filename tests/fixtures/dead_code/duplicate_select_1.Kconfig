@@ -1,0 +1,9 @@
+config X
+  bool
+
+config Y
+  select X if Z
+  select X if Z
+
+config Z
+  bool
