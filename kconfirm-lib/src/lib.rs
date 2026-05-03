@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
+use nom_kconfig::Entry;
+use nom_kconfig::{KconfigInput, parse_kconfig};
+
 pub mod output;
 use output::*;
 
@@ -8,17 +11,10 @@ use symbol_table::*;
 mod dead_links;
 
 mod checks;
-pub use checks::{AnalysisArgs, Check, check_variable_info, parse_check};
+pub use checks::{AnalysisArgs, Check, check_select_visible, check_variable_info, parse_check};
 
 mod analyze;
 use analyze::*;
-
-use log::error;
-use nom_kconfig::Entry;
-
-use nom_kconfig::{KconfigInput, parse_kconfig};
-
-use crate::checks::check_select_visible;
 
 pub fn check_kconfig(
     args: AnalysisArgs,
