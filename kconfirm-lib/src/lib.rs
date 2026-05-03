@@ -39,8 +39,13 @@ pub fn check_kconfig(
                 ));
             }
             Err(e) => {
-                error!("FATAL: failed to parse kconfig, error is {:?}", e);
-                panic!();
+                findings.push(Finding {
+                    severity: Severity::Fatal,
+                    check: Check::FailedParse,
+                    symbol: None,
+                    message: format!("Failed to parse kconfig, error is: {}", e),
+                    arch: None,
+                });
             }
         }
     }

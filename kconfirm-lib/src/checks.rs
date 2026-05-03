@@ -7,6 +7,7 @@ use std::collections::HashSet;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Check {
+    FailedParse,
     UngroupedAttribute, // check for duplicate default values, and ungrouped attributes
     DeadLink,           // check for dead links in the help texts
     SelectVisible,
@@ -23,6 +24,7 @@ pub enum Check {
 impl Check {
     pub fn as_str(self) -> &'static str {
         match self {
+            Check::FailedParse => "failed_parse",
             Check::UngroupedAttribute => "ungrouped_attribute",
             Check::DeadLink => "dead_links",
             Check::SelectVisible => "select_visible",
@@ -38,6 +40,7 @@ impl Check {
 
 pub fn parse_check(name: &str) -> Option<Check> {
     match name {
+        "failed_parse" => Some(Check::FailedParse),
         "ungrouped_attribute" => Some(Check::UngroupedAttribute),
         "dead_links" => Some(Check::DeadLink),
         "select_visible" => Some(Check::SelectVisible),
