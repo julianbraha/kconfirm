@@ -203,7 +203,7 @@ pub fn check_select_visible(var_symbol: &str, info: &TypeInfo) -> Vec<Finding> {
         }
     }
 
-    return findings;
+    findings
 }
 
 fn is_duplicate<T: Eq + std::hash::Hash>(set: &mut HashSet<T>, key: T) -> bool {
@@ -328,6 +328,7 @@ fn check_duplicate_selects(
     findings
 }
 
+#[allow(clippy::collapsible_if)]
 fn check_defaults(
     arch: &Option<String>,
     var_symbol: &str,

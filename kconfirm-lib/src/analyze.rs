@@ -631,7 +631,7 @@ fn handle_choice(
         arch: child_ctx.arch.clone(),
         visibility: choice_visibility_condition,
         dependencies: child_ctx.dependencies,
-        defaults: defaults,
+        defaults,
     };
     symtab.choices.push(choice_data);
 }
