@@ -1,0 +1,10 @@
+config A
+  int
+  depends on B
+  select C if B
+
+config B
+  tristate
+
+config C
+  bool

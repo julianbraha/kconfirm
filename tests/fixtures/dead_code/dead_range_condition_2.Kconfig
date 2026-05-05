@@ -1,0 +1,11 @@
+config A
+  int
+  depends on B
+  range 1 C if B
+
+config B
+  tristate
+
+config C
+  int
+  default 4

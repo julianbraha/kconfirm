@@ -3,6 +3,7 @@
 use crate::AnalysisArgs;
 use crate::Check;
 use crate::SymbolTable;
+use crate::checks::check_dead_conditions;
 use crate::dead_links::{self, LinkStatus, check_link};
 use crate::output::{Finding, Severity};
 use crate::symbol_table::ChoiceData;
@@ -431,6 +432,48 @@ fn handle_config(
             }
         }
     }
+
+    let default_conditions: Vec<&Expression> = kconfig_defaults
+        .iter()
+        .filter_map(|conditional_default| conditional_default.r#if.as_ref())
+        .collect();
+
+    check_dead_conditions(
+        &ctx.arch,
+        findings,
+        &config_symbol,
+        &kconfig_dependencies,
+        default_conditions,
+        "default",
+    );
+
+    let select_conditions: Vec<&Expression> = kconfig_selects
+        .iter()
+        .filter_map(|conditional_select| conditional_select.r#if.as_ref())
+        .collect();
+
+    check_dead_conditions(
+        &ctx.arch,
+        findings,
+        &config_symbol,
+        &kconfig_dependencies,
+        select_conditions,
+        "select",
+    );
+
+    let range_conditions: Vec<&Expression> = kconfig_ranges
+        .iter()
+        .filter_map(|conditional_range| conditional_range.r#if.as_ref())
+        .collect();
+
+    check_dead_conditions(
+        &ctx.arch,
+        findings,
+        &config_symbol,
+        &kconfig_dependencies,
+        range_conditions,
+        "select",
+    );
 
     if !found_prompt {
         child_ctx = child_ctx.with_visibility(None);
