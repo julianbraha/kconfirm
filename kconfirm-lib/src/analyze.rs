@@ -3,7 +3,6 @@
 use crate::AnalysisArgs;
 use crate::Check;
 use crate::SymbolTable;
-use crate::checks::check_dead_conditions;
 use crate::dead_links::{self, LinkStatus, check_link};
 use crate::output::{Finding, Severity};
 use crate::symbol_table::ChoiceData;
@@ -12,6 +11,7 @@ use log::error;
 use log::{debug, warn};
 use nom_kconfig::attribute::DefaultAttribute;
 use nom_kconfig::attribute::Expression;
+use nom_kconfig::attribute::Imply;
 use nom_kconfig::attribute::Select;
 use nom_kconfig::attribute::r#type::Type;
 use nom_kconfig::entry::Choice;
@@ -239,6 +239,7 @@ fn handle_config(
     let mut config_type = None;
     let mut kconfig_dependencies = Vec::new();
     let mut kconfig_selects: Vec<Select> = Vec::new();
+    let mut kconfig_implies: Vec<Imply> = Vec::new();
     let mut kconfig_ranges = Vec::new();
     let mut kconfig_defaults = Vec::new();
     let mut found_prompt = false;
@@ -365,8 +366,6 @@ fn handle_config(
                 kconfig_selects.push(select);
             }
             Imply(imply) => {
-                // doing nothing for imply in the symtab right now
-
                 attribute_grouping_checker.check(
                     FunctionalAttributes::Implies,
                     args,
@@ -375,6 +374,8 @@ fn handle_config(
                     &ctx.arch,
                     format!("ungrouped imply {}", imply),
                 );
+
+                kconfig_implies.push(imply);
 
                 // TODO: may be relevant for nonvisible config options when building an SMT model...
             }
@@ -433,48 +434,6 @@ fn handle_config(
         }
     }
 
-    let default_conditions: Vec<&Expression> = kconfig_defaults
-        .iter()
-        .filter_map(|conditional_default| conditional_default.r#if.as_ref())
-        .collect();
-
-    check_dead_conditions(
-        &ctx.arch,
-        findings,
-        &config_symbol,
-        &kconfig_dependencies,
-        default_conditions,
-        "default",
-    );
-
-    let select_conditions: Vec<&Expression> = kconfig_selects
-        .iter()
-        .filter_map(|conditional_select| conditional_select.r#if.as_ref())
-        .collect();
-
-    check_dead_conditions(
-        &ctx.arch,
-        findings,
-        &config_symbol,
-        &kconfig_dependencies,
-        select_conditions,
-        "select",
-    );
-
-    let range_conditions: Vec<&Expression> = kconfig_ranges
-        .iter()
-        .filter_map(|conditional_range| conditional_range.r#if.as_ref())
-        .collect();
-
-    check_dead_conditions(
-        &ctx.arch,
-        findings,
-        &config_symbol,
-        &kconfig_dependencies,
-        range_conditions,
-        "select",
-    );
-
     if !found_prompt {
         child_ctx = child_ctx.with_visibility(None);
     }
@@ -519,7 +478,15 @@ fn handle_config(
             .into_iter()
             .map(|sel| (sel.symbol, sel.r#if))
             .collect(),
+        kconfig_implies
+            .into_iter()
+            .map(|imply| (imply.symbol.to_string(), imply.r#if))
+            .collect(),
     );
+    // TODO: file a github issue, imply can never imply a constant (this is technically parsing incorrectly)
+
+    // TODO: when SMT solving, we may need to keep track of the implies the same way we keep track of selects,
+    //       in cases when the implied config option is non-visible
 
     // need to add the select condition to the definedness condition if it exists
     for select in kconfig_selects {
@@ -535,6 +502,7 @@ fn handle_config(
                 child_ctx.definition_condition.clone(),
                 Some((config_symbol.clone(), None)),
                 Vec::new(),
+                Vec::new(),
             ),
             Some(select_condition) => {
                 symtab.merge_insert_new_solved(
@@ -547,6 +515,7 @@ fn handle_config(
                     child_ctx.arch.clone(),
                     child_ctx.definition_condition.clone(),
                     Some((config_symbol.clone(), Some(select_condition))),
+                    Vec::new(),
                     Vec::new(),
                 );
             }
