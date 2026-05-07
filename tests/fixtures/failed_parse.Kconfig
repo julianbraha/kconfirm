@@ -1,1 +1,9 @@
-not a real kconfig
+config X
+  bool
+
+config Y
+  bool
+
+config Z
+  bool
+  depends on Y if X # not actually valid
