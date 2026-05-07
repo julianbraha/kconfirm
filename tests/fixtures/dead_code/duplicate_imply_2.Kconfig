@@ -1,0 +1,10 @@
+config A
+  bool
+  imply B if C
+  imply B if C
+
+config B
+  bool
+
+config C
+  bool

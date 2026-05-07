@@ -63,6 +63,7 @@ fn main() -> io::Result<()> {
         Check::DeadDefault,
         Check::DeadCondition,
         Check::DuplicateDefault,
+        Check::DuplicateImply,
     ]
     .into_iter()
     .collect();
