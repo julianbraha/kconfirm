@@ -6,9 +6,9 @@ use crate::common::run_cli_on_fixture;
 
 #[test]
 fn test_selects_kconfig_fixtures() {
-    let selects_dir = std::path::Path::new("tests/fixtures/selects");
+    let selects_dir = std::path::Path::new("tests/fixtures/select_visible");
 
-    let entries = fs::read_dir(selects_dir).expect("failed to read selects directory");
+    let entries = fs::read_dir(selects_dir).expect("failed to read select_visible directory");
 
     for entry in entries {
         let entry = entry.expect("bad dir entry");
