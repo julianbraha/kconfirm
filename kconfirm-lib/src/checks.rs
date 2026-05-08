@@ -460,26 +460,22 @@ fn check_duplicate_selects(
     info: &AttributeDef,
 ) -> Vec<Finding> {
     let mut findings = Vec::new();
-    let mut seen: HashSet<(String, String)> = HashSet::new();
+
+    // symbols selected unconditionally
+    let mut unconditional: HashSet<String> = HashSet::new();
+
+    // (symbol, condition)
+    let mut conditional: HashSet<(String, String)> = HashSet::new();
 
     for select in &info.selects {
         let select_var = select.0.clone();
 
         match &select.1 {
             Some(cond) => {
-                // A conditional select is dead if the same var is already selected unconditionally.
-                if seen.contains(&(select_var.clone(), String::new())) {
-                    findings.push(Finding {
-                        severity: Severity::Warning,
-                        check: Check::DuplicateSelect,
-                        symbol: Some(var_symbol.to_owned()),
-                        message: format!("dead select of {:?}", select.0),
-                        arch: arch.to_owned(),
-                    });
-                }
-
                 let cond_str = cond.to_string();
-                if is_duplicate(&mut seen, (select_var, cond_str.clone())) {
+
+                // duplicate conditional select
+                if !conditional.insert((select_var.clone(), cond_str.clone())) {
                     findings.push(Finding {
                         severity: Severity::Warning,
                         check: Check::DuplicateSelect,
@@ -491,9 +487,22 @@ fn check_duplicate_selects(
                         arch: arch.to_owned(),
                     });
                 }
+
+                // conditional is dead if unconditional exists
+                if unconditional.contains(&select_var) {
+                    findings.push(Finding {
+                        severity: Severity::Warning,
+                        check: Check::DuplicateSelect,
+                        symbol: Some(var_symbol.to_owned()),
+                        message: format!("dead select of {:?}", select.0),
+                        arch: arch.to_owned(),
+                    });
+                }
             }
+
             None => {
-                if is_duplicate(&mut seen, (select_var, String::new())) {
+                // duplicate unconditional select
+                if !unconditional.insert(select_var.clone()) {
                     findings.push(Finding {
                         severity: Severity::Warning,
                         check: Check::DuplicateSelect,
@@ -501,6 +510,19 @@ fn check_duplicate_selects(
                         message: format!("duplicate select of {:?}", select.0),
                         arch: arch.to_owned(),
                     });
+                }
+
+                // any previous conditional selects are now dead too
+                for (sym, _) in &conditional {
+                    if sym == &select_var {
+                        findings.push(Finding {
+                            severity: Severity::Warning,
+                            check: Check::DuplicateSelect,
+                            symbol: Some(var_symbol.to_owned()),
+                            message: format!("dead select of {:?}", select.0),
+                            arch: arch.to_owned(),
+                        });
+                    }
                 }
             }
         }
