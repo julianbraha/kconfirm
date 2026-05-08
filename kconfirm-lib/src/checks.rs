@@ -98,7 +98,7 @@ pub fn check_backwards_range(
                 RangeBound::Hex(b_str) => {
                     return b_str.parse();
                 }
-                RangeBound::Symbol(lb) => {
+                RangeBound::Symbol(_) => {
                     // TODO: need SMT solving for this case
                     //       for now, the caller is expected not to pass these cases.
                     unreachable!("not handling variable ranges until SMT solving");
