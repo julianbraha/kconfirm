@@ -57,32 +57,34 @@ pub fn get_arch_kconfig_files(
 ) -> std::io::Result<Vec<LinuxKconfig>> {
     let mut arch_kconfigs = Vec::new();
 
-    for entry in walkdir::WalkDir::new(arch_dir_path)
-        .max_depth(2)
-        .into_iter()
-        .filter_map(Result::ok)
-        .filter(|e| e.file_type().is_file())
-    {
-        let path = entry.path();
+    // iterate only architecture subdirectories under arch/
+    for entry in std::fs::read_dir(&arch_dir_path)? {
+        let entry = entry?;
 
-        // filter for Kconfig and Kconfig.debug files
-        if !path
-            .file_name()
-            .and_then(|s| s.to_str())
-            .is_some_and(|n| n == "Kconfig" || n == "Kconfig.debug")
-        {
+        if !entry.file_type()?.is_dir() {
             continue;
         }
 
-        // get the arch from the path (e.g. x86 in /arch/x86/)
-        let relative_path = path.strip_prefix(&linux_root).unwrap();
-        let arch_dir = match relative_path.components().nth(1) {
-            Some(std::path::Component::Normal(n)) => n.to_string_lossy(),
-            _ => continue,
-        };
+        let arch_dir = entry.file_name().to_string_lossy().to_string();
+        let arch_path = entry.path();
 
-        if linux_root.join("arch").join(&*arch_dir).is_dir() {
-            let kconfig_file = KconfigFile::new(linux_root.clone(), relative_path.to_path_buf());
+        // only parse:
+        //   arch/<arch>/Kconfig
+        //   arch/<arch>/Kconfig.debug
+        let candidate_files = [arch_path.join("Kconfig"), arch_path.join("Kconfig.debug")];
+
+        for path in candidate_files {
+            if !path.is_file() {
+                continue;
+            }
+
+            let relative_path = match path.strip_prefix(&linux_root) {
+                Ok(p) => p.to_path_buf(),
+                Err(_) => continue,
+            };
+
+            let kconfig_file = KconfigFile::new(linux_root.clone(), relative_path);
+
             arch_kconfigs.push(LinuxKconfig {
                 arch_config_option: Some(arch_dir_to_config(&arch_dir)),
                 file_contents: kconfig_file.read_to_string()?,
