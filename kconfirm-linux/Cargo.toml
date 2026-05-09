@@ -4,12 +4,9 @@ version = "0.8.0"
 edition = "2024"
 rust-version.workspace = true
 
-
 [dependencies]
 kconfirm-lib = { path = "../kconfirm-lib" }
-#nom-kconfig = { workspace = true, features = ["coreboot"] }
 nom-kconfig = { workspace = true }
-
 log = { workspace = true }
 env_logger = { workspace = true }
 clap = { workspace = true }
