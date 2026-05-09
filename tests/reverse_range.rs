@@ -6,7 +6,7 @@ use crate::common::run_cli_on_fixture;
 
 #[test]
 fn test_range_kconfig_fixtures() {
-    let ranges_dir = std::path::Path::new("tests/fixtures/ranges");
+    let ranges_dir = std::path::Path::new("tests/fixtures/reverse_ranges");
 
     let entries = fs::read_dir(ranges_dir).expect("failed to read ranges directory");
 
