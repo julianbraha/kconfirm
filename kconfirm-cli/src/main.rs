@@ -64,7 +64,7 @@ fn main() -> io::Result<()> {
         Check::ConstantCondition,
         Check::DuplicateDefault,
         Check::DuplicateImply,
-        Check::BackwardsRange,
+        Check::ReverseRange,
     ]
     .into_iter()
     .collect();

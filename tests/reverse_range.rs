@@ -36,7 +36,7 @@ fn test_range_kconfig_fixtures() {
 
     // Test the golden file from the parent fixtures directory
     let golden_path = std::path::Path::new("tests/fixtures/golden.Kconfig");
-    let output = run_cli_on_fixture(&golden_path, "backwards_range", "dead_links");
+    let output = run_cli_on_fixture(&golden_path, "reverse_range", "dead_links");
     let findings = count_findings(&output);
 
     assert_eq!(

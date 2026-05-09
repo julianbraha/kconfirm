@@ -1,0 +1,3 @@
+config X
+    hex
+    range 0xa 0x1
