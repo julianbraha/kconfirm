@@ -1,6 +1,7 @@
 <div align="center">
   <img src="assets/kconfirm.png" alt="Project Logo" width="200">
 </div>
+<p align="center"><sub><em>Logo given to me by my friend, Silas Jaeger</em></sub></p>
 
 # kconfirm
 A static analysis tool for the Kconfig language.
