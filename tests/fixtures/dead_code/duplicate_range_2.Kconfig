@@ -1,0 +1,10 @@
+config X
+    int "x"
+
+config Z
+    int "z"
+
+config Y
+    bool "y"
+    range X Z
+    range X Z

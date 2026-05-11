@@ -1,0 +1,7 @@
+config X
+    bool "x"
+
+config Y
+    bool "y"
+    default X
+    default X

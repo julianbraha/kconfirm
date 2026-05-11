@@ -1,0 +1,10 @@
+config X
+    bool "x"
+
+config Z
+    bool "z"
+
+config Y
+    bool "y"
+    default X if Z
+    default X if !Z

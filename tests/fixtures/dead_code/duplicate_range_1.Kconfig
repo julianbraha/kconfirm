@@ -1,0 +1,4 @@
+config X
+    int "x"
+    range 11 13
+    range 11 13
