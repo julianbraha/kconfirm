@@ -25,7 +25,7 @@ pub enum Check {
     DuplicateDefault,
     DuplicateDefaultValue,
     DuplicateImply,
-    BackwardsRange,
+    ReverseRange,
 }
 
 impl Check {
@@ -44,7 +44,7 @@ impl Check {
             Check::DuplicateDefault => "duplicate_default",
             Check::DuplicateDefaultValue => "duplicate_default_value",
             Check::DuplicateImply => "duplicate_imply",
-            Check::BackwardsRange => "backwards_range",
+            Check::ReverseRange => "reverse_range",
         }
     }
 }
@@ -63,7 +63,7 @@ pub fn parse_check(name: &str) -> Option<Check> {
         "duplicate_default" => Some(Check::DuplicateDefault),
         "duplicate_default_value" => Some(Check::DuplicateDefaultValue),
         "duplicate_imply" => Some(Check::DuplicateImply),
-        "backwards_range" => Some(Check::BackwardsRange),
+        "reverse_range" => Some(Check::ReverseRange),
         _ => None,
     }
 }
@@ -81,7 +81,7 @@ impl AnalysisArgs {
 }
 
 // returns an Error if a hex range bound cannot be parsed as an i64
-pub fn check_backwards_range(
+pub fn check_reverse_ranges(
     arch: &Option<String>,
     var_symbol: &str,
     info: &AttributeDef,
@@ -121,13 +121,13 @@ pub fn check_backwards_range(
             (Ok(lower_bound), Ok(upper_bound)) => {
                 if lower_bound > upper_bound {
                     let message = format!(
-                        "backwards range {} for config option: {}, no value is valid",
+                        "reverse range {} for config option: {}, no value is valid",
                         range.to_string(),
                         var_symbol,
                     );
                     findings.push(Finding {
                         severity: Severity::Warning,
-                        check: Check::BackwardsRange,
+                        check: Check::ReverseRange,
                         symbol: Some(var_symbol.to_owned()),
                         arch: arch.to_owned(),
                         message,
@@ -282,8 +282,8 @@ pub fn check_variable_info(
         findings.extend(check_defaults(arch_specific, var_symbol, info, args));
     }
 
-    if args.is_enabled(Check::BackwardsRange) {
-        findings.extend(check_backwards_range(arch_specific, var_symbol, info));
+    if args.is_enabled(Check::ReverseRange) {
+        findings.extend(check_reverse_ranges(arch_specific, var_symbol, info));
     }
 
     findings
