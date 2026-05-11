@@ -308,8 +308,8 @@ pub fn check_select_visible(var_symbol: &str, info: &TypeInfo) -> Vec<Finding> {
             // now, we need to check if `var_symbol` is unconditionally visible
 
             let message = format!(
-                "{} selects the visible {}; consider using 'depends on' or 'imply' instead",
-                selector, var_symbol
+                "selects the visible {}; consider using 'depends on' or 'imply' instead",
+                var_symbol
             );
 
             // match the architecture that the select happens under with the architecture of the unconditional visibility
