@@ -1,11 +1,12 @@
-use nom_kconfig::attribute::Expression;
+use log::error;
+use nom_kconfig::attribute::{Expression, range::RangeBound};
 
 // SPDX-License-Identifier: GPL-2.0-only
 use crate::{
     output::{Finding, Severity},
     symbol_table::{AttributeDef, TypeInfo},
 };
-use std::collections::HashSet;
+use std::{collections::HashSet, num::ParseIntError};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Check {
@@ -24,6 +25,7 @@ pub enum Check {
     DuplicateDefault,
     DuplicateDefaultValue,
     DuplicateImply,
+    BackwardsRange,
 }
 
 impl Check {
@@ -42,6 +44,7 @@ impl Check {
             Check::DuplicateDefault => "duplicate_default",
             Check::DuplicateDefaultValue => "duplicate_default_value",
             Check::DuplicateImply => "duplicate_imply",
+            Check::BackwardsRange => "backwards_range",
         }
     }
 }
@@ -60,11 +63,12 @@ pub fn parse_check(name: &str) -> Option<Check> {
         "duplicate_default" => Some(Check::DuplicateDefault),
         "duplicate_default_value" => Some(Check::DuplicateDefaultValue),
         "duplicate_imply" => Some(Check::DuplicateImply),
+        "backwards_range" => Some(Check::BackwardsRange),
         _ => None,
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AnalysisArgs {
     // check for duplicate default values
     pub enabled_checks: HashSet<Check>,
@@ -74,6 +78,74 @@ impl AnalysisArgs {
     pub fn is_enabled(&self, check: Check) -> bool {
         self.enabled_checks.contains(&check)
     }
+}
+
+// returns an Error if a hex range bound cannot be parsed as an i64
+pub fn check_backwards_range(
+    arch: &Option<String>,
+    var_symbol: &str,
+    info: &AttributeDef,
+) -> Vec<Finding> {
+    let mut findings = Vec::new();
+
+    for range in &info.kconfig_ranges {
+        // returns an Error if a hex range bound cannot be parsed as an i64
+        fn range_bound_to_int(range_bound: &RangeBound) -> Result<i64, ParseIntError> {
+            match range_bound {
+                RangeBound::Number(b) => {
+                    return Ok(b.to_owned());
+                }
+                RangeBound::Hex(b_str) => {
+                    return b_str.parse();
+                }
+                RangeBound::Symbol(lb) => {
+                    // TODO: need SMT solving for this case
+                    //       for now, the caller is expected not to pass these cases.
+                    unreachable!("not handling variable ranges until SMT solving");
+                }
+            }
+        }
+
+        if matches!(range.lower_bound, RangeBound::Symbol(_))
+            || matches!(range.upper_bound, RangeBound::Symbol(_))
+        {
+            // not handling these cases until SMT solving.
+            // don't return though, because we stil want to check the other ranges.
+            continue;
+        }
+
+        let maybe_lower_bound = range_bound_to_int(&range.lower_bound);
+        let maybe_upper_bound = range_bound_to_int(&range.upper_bound);
+
+        match (maybe_lower_bound, maybe_upper_bound) {
+            (Ok(lower_bound), Ok(upper_bound)) => {
+                if lower_bound > upper_bound {
+                    let message = format!(
+                        "backwards range {} for config option: {}, no value is valid",
+                        range.to_string(),
+                        var_symbol,
+                    );
+                    findings.push(Finding {
+                        severity: Severity::Warning,
+                        check: Check::BackwardsRange,
+                        symbol: Some(var_symbol.to_owned()),
+                        arch: arch.to_owned(),
+                        message,
+                    });
+                }
+            }
+            (Result::Err(_), _) | (_, Result::Err(_)) => {
+                error!(
+                    "couldn't parse hex range bound as i64 for config option: {}",
+                    var_symbol
+                );
+                // still want to check the other range bounds
+                continue;
+            }
+        }
+    }
+
+    findings
 }
 
 pub fn check_constant_conditions(
@@ -208,6 +280,10 @@ pub fn check_variable_info(
         || args.is_enabled(Check::DuplicateDefaultValue)
     {
         findings.extend(check_defaults(arch_specific, var_symbol, info, args));
+    }
+
+    if args.is_enabled(Check::BackwardsRange) {
+        findings.extend(check_backwards_range(arch_specific, var_symbol, info));
     }
 
     findings

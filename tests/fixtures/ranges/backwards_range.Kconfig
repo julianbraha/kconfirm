@@ -1,0 +1,3 @@
+config X
+  int
+  range 2 1
