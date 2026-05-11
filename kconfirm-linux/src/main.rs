@@ -6,11 +6,10 @@ use std::path::PathBuf;
 
 use nom_kconfig::KconfigInput;
 
-use kconfirm_lib::AnalysisArgs;
-use kconfirm_lib::Check;
 use kconfirm_lib::check_kconfig;
 use kconfirm_lib::output::print_findings;
 use kconfirm_lib::parse_check;
+use kconfirm_lib::{AnalysisArgs, Check};
 use kconfirm_linux::collect_kconfig_root_files;
 
 #[derive(Parser, Debug)]
