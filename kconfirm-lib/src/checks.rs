@@ -432,7 +432,7 @@ fn check_duplicate_ranges(
 
     for range in &info.kconfig_ranges {
         // uniquely identify the range bounds
-        let range_key = format!("{}..{}", range.lower_bound, range.upper_bound);
+        let range_key = format!("{} {}", range.lower_bound, range.upper_bound);
 
         match &range.r#if {
             Some(cond) => {
