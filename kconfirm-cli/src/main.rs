@@ -61,7 +61,7 @@ fn main() -> io::Result<()> {
         Check::DeadRange,
         Check::DuplicateSelect,
         Check::DeadDefault,
-        Check::DeadCondition,
+        Check::ConstantCondition,
         Check::DuplicateDefault,
         Check::DuplicateImply,
     ]

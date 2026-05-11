@@ -20,7 +20,7 @@ pub enum Check {
     DeadRange,
     DuplicateSelect,
     DeadDefault,
-    DeadCondition,
+    ConstantCondition,
     DuplicateDefault,
     DuplicateDefaultValue,
     DuplicateImply,
@@ -38,7 +38,7 @@ impl Check {
             Check::DeadRange => "dead_range",
             Check::DuplicateSelect => "duplicate_select",
             Check::DeadDefault => "dead_default",
-            Check::DeadCondition => "dead_condition",
+            Check::ConstantCondition => "constant_condition",
             Check::DuplicateDefault => "duplicate_default",
             Check::DuplicateDefaultValue => "duplicate_default_value",
             Check::DuplicateImply => "duplicate_imply",
@@ -56,7 +56,7 @@ pub fn parse_check(name: &str) -> Option<Check> {
         "duplicate_range" => Some(Check::DuplicateRange),
         "duplicate_select" => Some(Check::DuplicateSelect),
         "dead_default" => Some(Check::DeadDefault),
-        "dead_condition" => Some(Check::DeadCondition),
+        "constant_condition" => Some(Check::ConstantCondition),
         "duplicate_default" => Some(Check::DuplicateDefault),
         "duplicate_default_value" => Some(Check::DuplicateDefaultValue),
         "duplicate_imply" => Some(Check::DuplicateImply),
@@ -76,7 +76,7 @@ impl AnalysisArgs {
     }
 }
 
-pub fn check_dead_conditions(
+pub fn check_constant_conditions(
     arch: &Option<String>,
     var_symbol: &str,
     info: &AttributeDef,
@@ -153,14 +153,14 @@ pub fn check_dead_conditions(
         for attribute_condition in attribute_conditions.into_iter() {
             if kconfig_dependencies.contains(attribute_condition) {
                 let message = format!(
-                    "dead {} condition 'if {}' for config option: {}, this condition is a dependency and will always be true",
+                    "constant {} condition 'if {}' for config option: {}, this condition is a dependency and will always be true",
                     context,
                     attribute_condition.to_string(),
                     symbol,
                 );
                 findings.push(Finding {
                     severity: Severity::Warning,
-                    check: Check::DeadCondition,
+                    check: Check::ConstantCondition,
                     symbol: Some(symbol.to_owned()),
                     arch: arch.to_owned(),
                     message,
@@ -199,8 +199,8 @@ pub fn check_variable_info(
         findings.extend(check_duplicate_selects(arch_specific, var_symbol, info));
     }
 
-    if args.is_enabled(Check::DeadCondition) {
-        findings.extend(check_dead_conditions(arch_specific, var_symbol, info));
+    if args.is_enabled(Check::ConstantCondition) {
+        findings.extend(check_constant_conditions(arch_specific, var_symbol, info));
     }
 
     if args.is_enabled(Check::DeadDefault)
