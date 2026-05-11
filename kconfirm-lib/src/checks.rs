@@ -20,11 +20,13 @@ pub enum Check {
     DuplicateRange,
     DeadRange,
     DuplicateSelect,
+    DeadSelect,
     DeadDefault,
     ConstantCondition,
     DuplicateDefault,
     DuplicateDefaultValue,
     DuplicateImply,
+    DeadImply,
     ReverseRange,
 }
 
@@ -33,17 +35,19 @@ impl Check {
         match self {
             Check::FailedParse => "failed_parse",
             Check::UngroupedAttribute => "ungrouped_attribute",
-            Check::DeadLink => "dead_links",
+            Check::DeadLink => "dead_link",
             Check::SelectVisible => "select_visible",
             Check::DuplicateDependency => "duplicate_dependency",
             Check::DuplicateRange => "duplicate_range",
             Check::DeadRange => "dead_range",
             Check::DuplicateSelect => "duplicate_select",
+            Check::DeadSelect => "dead_select",
             Check::DeadDefault => "dead_default",
             Check::ConstantCondition => "constant_condition",
             Check::DuplicateDefault => "duplicate_default",
             Check::DuplicateDefaultValue => "duplicate_default_value",
             Check::DuplicateImply => "duplicate_imply",
+            Check::DeadImply => "dead_imply",
             Check::ReverseRange => "reverse_range",
         }
     }
@@ -53,16 +57,18 @@ pub fn parse_check(name: &str) -> Option<Check> {
     match name {
         "failed_parse" => Some(Check::FailedParse),
         "ungrouped_attribute" => Some(Check::UngroupedAttribute),
-        "dead_links" => Some(Check::DeadLink),
+        "dead_link" => Some(Check::DeadLink),
         "select_visible" => Some(Check::SelectVisible),
         "duplicate_dependency" => Some(Check::DuplicateDependency),
         "duplicate_range" => Some(Check::DuplicateRange),
         "duplicate_select" => Some(Check::DuplicateSelect),
+        "dead_select" => Some(Check::DeadSelect),
         "dead_default" => Some(Check::DeadDefault),
         "constant_condition" => Some(Check::ConstantCondition),
         "duplicate_default" => Some(Check::DuplicateDefault),
         "duplicate_default_value" => Some(Check::DuplicateDefaultValue),
         "duplicate_imply" => Some(Check::DuplicateImply),
+        "dead_imply" => Some(Check::DeadImply),
         "reverse_range" => Some(Check::ReverseRange),
         _ => None,
     }
@@ -421,7 +427,7 @@ fn check_duplicate_implies(
                 if unconditional.contains(&imply_var) {
                     findings.push(Finding {
                         severity: Severity::Warning,
-                        check: Check::DuplicateImply,
+                        check: Check::DeadImply,
                         symbol: Some(var_symbol.to_owned()),
                         message: format!("dead imply of {:?}", imp),
                         arch: arch.to_owned(),
@@ -446,7 +452,7 @@ fn check_duplicate_implies(
                     if sym == &imply_var {
                         findings.push(Finding {
                             severity: Severity::Warning,
-                            check: Check::DuplicateImply,
+                            check: Check::DeadImply,
                             symbol: Some(var_symbol.to_owned()),
                             message: format!("dead imply of {:?}", imp),
                             arch: arch.to_owned(),
@@ -573,7 +579,7 @@ fn check_duplicate_selects(
                 if unconditional.contains(&select_var) {
                     findings.push(Finding {
                         severity: Severity::Warning,
-                        check: Check::DuplicateSelect,
+                        check: Check::DeadSelect,
                         symbol: Some(var_symbol.to_owned()),
                         message: format!("dead select of {:?}", select.0),
                         arch: arch.to_owned(),
@@ -598,7 +604,7 @@ fn check_duplicate_selects(
                     if sym == &select_var {
                         findings.push(Finding {
                             severity: Severity::Warning,
-                            check: Check::DuplicateSelect,
+                            check: Check::DeadSelect,
                             symbol: Some(var_symbol.to_owned()),
                             message: format!("dead select of {:?}", select.0),
                             arch: arch.to_owned(),
