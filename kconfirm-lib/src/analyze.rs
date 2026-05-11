@@ -54,6 +54,7 @@ impl AttributeGroupingChecker {
         args: &AnalysisArgs,
         findings: &mut Vec<Finding>,
         symbol: &str,
+        arch: &Option<String>,
         message: String,
     ) {
         if !args.is_enabled(Check::UngroupedAttribute) {
@@ -80,6 +81,7 @@ impl AttributeGroupingChecker {
                         check: Check::UngroupedAttribute,
                         symbol: Some(symbol.to_string()),
                         message,
+                        arch: arch.to_owned(),
                     });
                 }
 
@@ -107,6 +109,7 @@ impl DeadLinkChecker {
         args: &AnalysisArgs,
         findings: &mut Vec<Finding>,
         symbol: Option<&str>,
+        arch: &Option<String>,
         context: &str,
     ) {
         if !args.is_enabled(Check::DeadLink) {
@@ -137,6 +140,7 @@ impl DeadLinkChecker {
                         "{} contains link {} with status {:?}",
                         context, link, status
                     ),
+                    arch: arch.to_owned(),
                 });
             }
         }
@@ -263,6 +267,7 @@ fn handle_config(
                         args,
                         findings,
                         &config_symbol,
+                        &ctx.arch,
                         format!("ungrouped default {}", db),
                     );
                 }
@@ -281,6 +286,7 @@ fn handle_config(
                         args,
                         findings,
                         &config_symbol,
+                        &ctx.arch,
                         format!("ungrouped default {}", &dt),
                     );
 
@@ -325,6 +331,7 @@ fn handle_config(
                     args,
                     findings,
                     &config_symbol,
+                    &ctx.arch,
                     format!("ungrouped default {}", &default),
                 );
 
@@ -337,6 +344,7 @@ fn handle_config(
                     args,
                     findings,
                     &config_symbol,
+                    &ctx.arch,
                     format!("ungrouped dependency {}", &depends_on),
                 );
 
@@ -348,6 +356,7 @@ fn handle_config(
                     args,
                     findings,
                     &config_symbol,
+                    &ctx.arch,
                     format!("ungrouped select {}", &select),
                 );
 
@@ -361,6 +370,7 @@ fn handle_config(
                     args,
                     findings,
                     &config_symbol,
+                    &ctx.arch,
                     format!("ungrouped imply {}", imply),
                 );
 
@@ -373,6 +383,7 @@ fn handle_config(
                     args,
                     findings,
                     &config_symbol,
+                    &ctx.arch,
                     format!("ungrouped range {}", r),
                 );
 
@@ -381,7 +392,14 @@ fn handle_config(
             Help(h) => {
                 // doing nothing for menu help right now
 
-                dead_link_checker.check_text(&h, args, findings, Some(&config_symbol), "help text");
+                dead_link_checker.check_text(
+                    &h,
+                    args,
+                    findings,
+                    Some(&config_symbol),
+                    &ctx.arch,
+                    "help text",
+                );
             }
 
             Modules => {

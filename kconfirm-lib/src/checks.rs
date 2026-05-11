@@ -73,31 +73,34 @@ pub fn check_variable_info(
 
     if args.is_enabled(Check::DuplicateDependency) {
         findings.extend(check_duplicate_dependencies(
+            arch_specific,
             var_symbol,
             info,
-            arch_specific,
         ));
     }
 
     if args.is_enabled(Check::DuplicateRange) {
-        findings.extend(check_duplicate_ranges(var_symbol, info));
+        findings.extend(check_duplicate_ranges(arch_specific, var_symbol, info));
     }
 
     if args.is_enabled(Check::DuplicateSelect) {
-        findings.extend(check_duplicate_selects(var_symbol, info));
+        findings.extend(check_duplicate_selects(arch_specific, var_symbol, info));
     }
 
     if args.is_enabled(Check::DuplicateDefaultValue) {
-        findings.extend(check_defaults(var_symbol, info, args));
+        findings.extend(check_defaults(arch_specific, var_symbol, info, args));
     }
 
     if args.is_enabled(Check::DeadDefault) {
-        findings.extend(check_defaults(var_symbol, info, args));
+        findings.extend(check_defaults(arch_specific, var_symbol, info, args));
     }
 
     if args.is_enabled(Check::DuplicateDefault) {
         findings.extend(check_defaults(
-            var_symbol, info, args, // duplicate default values is a style check
+            arch_specific,
+            var_symbol,
+            info,
+            args, // duplicate default values is a style check
         ));
     }
 
@@ -120,16 +123,10 @@ pub fn check_select_visible(var_symbol: &str, info: &TypeInfo) -> Vec<Finding> {
             // at this point, we know that `selector` unconditionally selects `var_symbol`
             // now, we need to check if `var_symbol` is unconditionally visible
 
-            let message = match arch {
-                Some(a) => format!(
-                    "{} selects the visible {} for architecture {}, consider using 'depends on' or 'imply' instead",
-                    selector, var_symbol, a
-                ),
-                None => format!(
-                    "{} selects the visible {}, consider using 'depends on' or 'imply' instead",
-                    selector, var_symbol
-                ),
-            };
+            let message = format!(
+                "{} selects the visible {}; consider using 'depends on' or 'imply' instead",
+                selector, var_symbol
+            );
 
             // match the architecture that the select happens under with the architecture of the unconditional visibility
             match info.attribute_defs.get(arch) {
@@ -146,6 +143,7 @@ pub fn check_select_visible(var_symbol: &str, info: &TypeInfo) -> Vec<Finding> {
                                     check: Check::SelectVisible,
                                     symbol: Some(selector.to_owned()),
                                     message: message.clone(),
+                                    arch: arch.to_owned(),
                                 });
                             }
                         }
@@ -161,6 +159,7 @@ pub fn check_select_visible(var_symbol: &str, info: &TypeInfo) -> Vec<Finding> {
                                 check: Check::SelectVisible,
                                 symbol: Some(selector.to_owned()),
                                 message: message.clone(),
+                                arch: arch.to_owned(),
                             });
                         }
                     }
@@ -177,28 +176,22 @@ fn is_duplicate<T: Eq + std::hash::Hash>(set: &mut HashSet<T>, key: T) -> bool {
 }
 
 fn check_duplicate_dependencies(
+    arch_specific: &Option<String>,
     var_symbol: &str,
     info: &AttributeDef,
-    arch_specific: &Option<String>,
 ) -> Vec<Finding> {
     let mut findings = Vec::new();
     let mut seen = HashSet::new();
 
     for dep in &info.kconfig_dependencies {
         if is_duplicate(&mut seen, dep.to_string()) {
-            let message = match arch_specific {
-                Some(arch) => format!(
-                    "duplicate dependency on {} for architecture {}",
-                    dep.to_string(),
-                    arch
-                ),
-                None => format!("duplicate dependency on {}", dep.to_string()),
-            };
+            let message = format!("duplicate dependency on {}", dep.to_string());
             findings.push(Finding {
                 severity: Severity::Warning,
                 check: Check::DuplicateDependency,
                 symbol: Some(var_symbol.to_owned()),
                 message,
+                arch: arch_specific.to_owned(),
             });
         }
     }
@@ -206,7 +199,11 @@ fn check_duplicate_dependencies(
     findings
 }
 
-fn check_duplicate_ranges(var_symbol: &str, info: &AttributeDef) -> Vec<Finding> {
+fn check_duplicate_ranges(
+    arch: &Option<String>,
+    var_symbol: &str,
+    info: &AttributeDef,
+) -> Vec<Finding> {
     let mut findings = Vec::new();
     let mut seen_conditions = HashSet::new();
     let mut already_unconditional = false;
@@ -218,6 +215,7 @@ fn check_duplicate_ranges(var_symbol: &str, info: &AttributeDef) -> Vec<Finding>
                 check: Check::DuplicateRange,
                 symbol: Some(var_symbol.to_owned()),
                 message: format!("dead range of {:?}", range),
+                arch: arch.to_owned(),
             });
             continue;
         }
@@ -229,6 +227,7 @@ fn check_duplicate_ranges(var_symbol: &str, info: &AttributeDef) -> Vec<Finding>
                     check: Check::DuplicateRange,
                     symbol: Some(var_symbol.to_owned()),
                     message: format!("dead range of {:?}", range),
+                    arch: arch.to_owned(),
                 });
             }
         } else {
@@ -239,7 +238,11 @@ fn check_duplicate_ranges(var_symbol: &str, info: &AttributeDef) -> Vec<Finding>
     findings
 }
 
-fn check_duplicate_selects(var_symbol: &str, info: &AttributeDef) -> Vec<Finding> {
+fn check_duplicate_selects(
+    arch: &Option<String>,
+    var_symbol: &str,
+    info: &AttributeDef,
+) -> Vec<Finding> {
     let mut findings = Vec::new();
     let mut seen: HashSet<(String, String)> = HashSet::new();
 
@@ -255,6 +258,7 @@ fn check_duplicate_selects(var_symbol: &str, info: &AttributeDef) -> Vec<Finding
                         check: Check::DuplicateSelect,
                         symbol: Some(var_symbol.to_owned()),
                         message: format!("dead select of {:?}", select.0),
+                        arch: arch.to_owned(),
                     });
                 }
 
@@ -268,6 +272,7 @@ fn check_duplicate_selects(var_symbol: &str, info: &AttributeDef) -> Vec<Finding
                             "duplicate select of {:?} with condition {}",
                             select.0, cond_str
                         ),
+                        arch: arch.to_owned(),
                     });
                 }
             }
@@ -278,6 +283,7 @@ fn check_duplicate_selects(var_symbol: &str, info: &AttributeDef) -> Vec<Finding
                         check: Check::DuplicateSelect,
                         symbol: Some(var_symbol.to_owned()),
                         message: format!("duplicate select of {:?}", select.0),
+                        arch: arch.to_owned(),
                     });
                 }
             }
@@ -287,7 +293,12 @@ fn check_duplicate_selects(var_symbol: &str, info: &AttributeDef) -> Vec<Finding
     findings
 }
 
-fn check_defaults(var_symbol: &str, info: &AttributeDef, args: &AnalysisArgs) -> Vec<Finding> {
+fn check_defaults(
+    arch: &Option<String>,
+    var_symbol: &str,
+    info: &AttributeDef,
+    args: &AnalysisArgs,
+) -> Vec<Finding> {
     let mut findings = Vec::new();
     let mut seen_conditions = HashSet::new();
     let mut seen_values = HashSet::new();
@@ -302,6 +313,7 @@ fn check_defaults(var_symbol: &str, info: &AttributeDef, args: &AnalysisArgs) ->
                 check: Check::DeadDefault,
                 symbol: Some(var_symbol.to_owned()),
                 message: format!("dead default of {}", val_str),
+                arch: arch.to_owned(),
             });
         }
 
@@ -315,6 +327,7 @@ fn check_defaults(var_symbol: &str, info: &AttributeDef, args: &AnalysisArgs) ->
                         "duplicate default value of {}; consider combining the conditions with a logical-or: ||",
                         val_str
                     ),
+                    arch: arch.to_owned(),
                 });
             }
         }
@@ -329,6 +342,7 @@ fn check_defaults(var_symbol: &str, info: &AttributeDef, args: &AnalysisArgs) ->
                                 check: Check::DuplicateDefault,
                                 symbol: Some(var_symbol.to_owned()),
                                 message: format!("duplicate default condition of {:?}", cond),
+                                arch: arch.to_owned(),
                             });
                         }
                     } else {
@@ -338,6 +352,7 @@ fn check_defaults(var_symbol: &str, info: &AttributeDef, args: &AnalysisArgs) ->
                                 check: Check::DeadDefault,
                                 symbol: Some(var_symbol.to_owned()),
                                 message: format!("dead default of {}", val_str),
+                                arch: arch.to_owned(),
                             });
                         }
                     }
