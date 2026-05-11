@@ -5,7 +5,7 @@ use crate::common::count_findings;
 use crate::common::run_cli_on_fixture;
 
 #[test]
-fn detects_dead_links() {
+fn test_dead_links() {
     // 1 dead link
     let dead_link_path = PathBuf::from("tests/fixtures/dead_links/dead_link.Kconfig");
     let output = run_cli_on_fixture(&dead_link_path, "dead_links", "style");
