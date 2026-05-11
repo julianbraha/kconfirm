@@ -1,0 +1,7 @@
+config A
+  bool
+  imply B
+  imply B
+
+config B
+  bool

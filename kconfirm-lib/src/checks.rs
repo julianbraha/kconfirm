@@ -23,6 +23,7 @@ pub enum Check {
     DeadCondition,
     DuplicateDefault,
     DuplicateDefaultValue,
+    DuplicateImply,
 }
 
 impl Check {
@@ -40,6 +41,7 @@ impl Check {
             Check::DeadCondition => "dead_condition",
             Check::DuplicateDefault => "duplicate_default",
             Check::DuplicateDefaultValue => "duplicate_default_value",
+            Check::DuplicateImply => "duplicate_imply",
         }
     }
 }
@@ -57,6 +59,7 @@ pub fn parse_check(name: &str) -> Option<Check> {
         "dead_condition" => Some(Check::DeadCondition),
         "duplicate_default" => Some(Check::DuplicateDefault),
         "duplicate_default_value" => Some(Check::DuplicateDefaultValue),
+        "duplicate_imply" => Some(Check::DuplicateImply),
         _ => None,
     }
 }
@@ -184,6 +187,10 @@ pub fn check_variable_info(
         ));
     }
 
+    if args.is_enabled(Check::DuplicateImply) {
+        findings.extend(check_duplicate_implies(arch_specific, var_symbol, info));
+    }
+
     if args.is_enabled(Check::DuplicateRange) {
         findings.extend(check_duplicate_ranges(arch_specific, var_symbol, info));
     }
@@ -292,6 +299,40 @@ fn check_duplicate_dependencies(
                 message,
                 arch: arch_specific.to_owned(),
             });
+        }
+    }
+
+    findings
+}
+
+fn check_duplicate_implies(
+    arch: &Option<String>,
+    var_symbol: &str,
+    info: &AttributeDef,
+) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    let mut seen_conditions = HashSet::new();
+    let mut seen_values = HashSet::new();
+    for imp in &info.implies {
+        let cond_str = match &imp.1 {
+            None => String::new(),
+            Some(imp_cond) => imp_cond.to_string(),
+        };
+
+        if is_duplicate(&mut seen_values, &imp.0) {
+            if is_duplicate(&mut seen_conditions, cond_str) {
+                findings.push(Finding {
+                    severity: Severity::Warning,
+                    check: Check::DuplicateImply,
+                    symbol: Some(var_symbol.to_owned()),
+                    message: format!("duplicate imply of {:?}", imp),
+                    arch: arch.to_owned(),
+                });
+            } else {
+                // TODO: this branch is a style check: duplicate value (could merge the conditions)
+            }
+        } else {
+            seen_conditions.insert(cond_str);
         }
     }
 
