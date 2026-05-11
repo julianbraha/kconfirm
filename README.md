@@ -74,6 +74,8 @@ See [findings/dead_links_7_0_rc6.txt](/findings/dead_links_7_0_rc6.txt)
 
 ## Submitted Patches: U-Boot
 
+### Dead Defaults
+
 [2026-04-15 "powerpc: fix dead default for SYS_L3_SIZE"](https://lists.denx.de/pipermail/u-boot/2026-April/614857.html)
 
 # Usage
