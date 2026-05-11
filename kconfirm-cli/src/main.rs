@@ -58,8 +58,10 @@ fn main() -> io::Result<()> {
         //Check::SelectUndefined,
         Check::DuplicateDependency,
         Check::DuplicateRange,
+        Check::DeadRange,
         Check::DuplicateSelect,
         Check::DeadDefault,
+        Check::DeadCondition,
         Check::DuplicateDefault,
     ]
     .into_iter()

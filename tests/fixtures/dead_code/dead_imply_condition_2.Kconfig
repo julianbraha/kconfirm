@@ -1,0 +1,10 @@
+config A
+  bool
+  imply B if C
+  depends on C
+
+config B
+  tristate
+
+config C
+  bool

@@ -1,0 +1,13 @@
+if C
+
+config A
+  bool
+  select B if C
+
+endif # C
+
+config B
+  tristate
+
+config C
+  bool

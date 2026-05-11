@@ -39,6 +39,7 @@ pub struct AttributeDef {
     pub kconfig_defaults: Vec<DefaultAttribute>,
     pub visibility: Vec<Option<OrExpression>>,
     pub selects: Vec<(KconfigSymbol, Cond)>,
+    pub implies: Vec<(KconfigSymbol, Cond)>,
 }
 
 impl TypeInfo {
@@ -64,6 +65,7 @@ impl TypeInfo {
         definition_condition: Vec<OrExpression>,
         selected_by: Option<(KconfigSymbol, Cond)>,
         selects: Vec<(KconfigSymbol, Cond)>,
+        implies: Vec<(KconfigSymbol, Cond)>,
     ) {
         // type merge
         match (&self.kconfig_type, &kconfig_type) {
@@ -92,6 +94,7 @@ impl TypeInfo {
             || !kconfig_ranges.is_empty()
             || !kconfig_defaults.is_empty()
             || !selects.is_empty()
+            || !implies.is_empty()
         {
             insert_variable_info(
                 &mut self.attribute_defs,
@@ -103,6 +106,7 @@ impl TypeInfo {
                     kconfig_defaults,
                     visibility,
                     selects,
+                    implies,
                 },
             );
         }
@@ -160,6 +164,7 @@ impl SymbolTable {
         definition_condition: Vec<OrExpression>,
         selected_by: Option<(KconfigSymbol, Cond)>,
         selects: Vec<(KconfigSymbol, Cond)>,
+        implies: Vec<(KconfigSymbol, Cond)>,
     ) {
         let entry = self.raw.entry(var.clone());
 
@@ -176,6 +181,7 @@ impl SymbolTable {
                     definition_condition,
                     selected_by,
                     selects,
+                    implies,
                 );
                 v.insert(t);
             }
@@ -193,6 +199,7 @@ impl SymbolTable {
                     definition_condition,
                     selected_by,
                     selects,
+                    implies,
                 );
             }
         }

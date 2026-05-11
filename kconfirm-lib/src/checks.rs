@@ -17,6 +17,7 @@ pub enum Check {
     //SelectUndefined,
     DuplicateDependency,
     DuplicateRange,
+    DeadRange,
     DuplicateSelect,
     DeadDefault,
     DeadCondition,
@@ -33,6 +34,7 @@ impl Check {
             Check::SelectVisible => "select_visible",
             Check::DuplicateDependency => "duplicate_dependency",
             Check::DuplicateRange => "duplicate_range",
+            Check::DeadRange => "dead_range",
             Check::DuplicateSelect => "duplicate_select",
             Check::DeadDefault => "dead_default",
             Check::DeadCondition => "dead_condition",
@@ -73,29 +75,97 @@ impl AnalysisArgs {
 
 pub fn check_dead_conditions(
     arch: &Option<String>,
-    findings: &mut Vec<Finding>,
-    symbol: &str,
-    kconfig_dependencies: &[Expression],
-    attribute_conditions: Vec<&Expression>,
-    context: &str,
-) {
-    for attribute_condition in attribute_conditions.into_iter() {
-        if kconfig_dependencies.contains(attribute_condition) {
-            let message = format!(
-                "dead {} condition 'if {}' for config option: {}, this condition is a dependency and will always be true",
-                context,
-                attribute_condition.to_string(),
-                symbol,
-            );
-            findings.push(Finding {
-                severity: Severity::Warning,
-                check: Check::DeadCondition,
-                symbol: Some(symbol.to_owned()),
-                arch: arch.to_owned(),
-                message,
-            });
+    var_symbol: &str,
+    info: &AttributeDef,
+) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    let default_conditions: Vec<&Expression> = info
+        .kconfig_defaults
+        .iter()
+        .filter_map(|conditional_default| conditional_default.r#if.as_ref())
+        .collect();
+
+    check_conditions(
+        arch,
+        &mut findings,
+        &var_symbol,
+        &info.kconfig_dependencies,
+        default_conditions,
+        "default",
+    );
+
+    let select_conditions: Vec<&Expression> = info
+        .selects
+        .iter()
+        .filter_map(|conditional_select| conditional_select.1.as_ref())
+        .collect();
+
+    check_conditions(
+        arch,
+        &mut findings,
+        var_symbol,
+        &info.kconfig_dependencies,
+        select_conditions,
+        "select",
+    );
+
+    let imply_conditions: Vec<&Expression> = info
+        .implies
+        .iter()
+        .filter_map(|imp| imp.1.as_ref())
+        .collect();
+
+    check_conditions(
+        arch,
+        &mut findings,
+        var_symbol,
+        &info.kconfig_dependencies,
+        imply_conditions,
+        "imply",
+    );
+
+    let range_conditions: Vec<&Expression> = info
+        .kconfig_ranges
+        .iter()
+        .filter_map(|conditional_range| conditional_range.r#if.as_ref())
+        .collect();
+
+    check_conditions(
+        arch,
+        &mut findings,
+        var_symbol,
+        &info.kconfig_dependencies,
+        range_conditions,
+        "range",
+    );
+
+    fn check_conditions(
+        arch: &Option<String>,
+        findings: &mut Vec<Finding>,
+        symbol: &str,
+        kconfig_dependencies: &[Expression],
+        attribute_conditions: Vec<&Expression>,
+        context: &str,
+    ) {
+        for attribute_condition in attribute_conditions.into_iter() {
+            if kconfig_dependencies.contains(attribute_condition) {
+                let message = format!(
+                    "dead {} condition 'if {}' for config option: {}, this condition is a dependency and will always be true",
+                    context,
+                    attribute_condition.to_string(),
+                    symbol,
+                );
+                findings.push(Finding {
+                    severity: Severity::Warning,
+                    check: Check::DeadCondition,
+                    symbol: Some(symbol.to_owned()),
+                    arch: arch.to_owned(),
+                    message,
+                });
+            }
         }
     }
+    findings
 }
 
 pub fn check_variable_info(
@@ -122,21 +192,15 @@ pub fn check_variable_info(
         findings.extend(check_duplicate_selects(arch_specific, var_symbol, info));
     }
 
-    if args.is_enabled(Check::DuplicateDefaultValue) {
-        findings.extend(check_defaults(arch_specific, var_symbol, info, args));
+    if args.is_enabled(Check::DeadCondition) {
+        findings.extend(check_dead_conditions(arch_specific, var_symbol, info));
     }
 
-    if args.is_enabled(Check::DeadDefault) {
+    if args.is_enabled(Check::DeadDefault)
+        || args.is_enabled(Check::DuplicateDefault)
+        || args.is_enabled(Check::DuplicateDefaultValue)
+    {
         findings.extend(check_defaults(arch_specific, var_symbol, info, args));
-    }
-
-    if args.is_enabled(Check::DuplicateDefault) {
-        findings.extend(check_defaults(
-            arch_specific,
-            var_symbol,
-            info,
-            args, // duplicate default values is a style check
-        ));
     }
 
     findings
@@ -247,7 +311,7 @@ fn check_duplicate_ranges(
         if already_unconditional {
             findings.push(Finding {
                 severity: Severity::Warning,
-                check: Check::DuplicateRange,
+                check: Check::DeadRange,
                 symbol: Some(var_symbol.to_owned()),
                 message: format!("dead range of {:?}", range),
                 arch: arch.to_owned(),
@@ -259,7 +323,7 @@ fn check_duplicate_ranges(
             if is_duplicate(&mut seen_conditions, cond.to_string()) {
                 findings.push(Finding {
                     severity: Severity::Warning,
-                    check: Check::DuplicateRange,
+                    check: Check::DeadRange,
                     symbol: Some(var_symbol.to_owned()),
                     message: format!("dead range of {:?}", range),
                     arch: arch.to_owned(),
