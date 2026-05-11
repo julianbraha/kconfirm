@@ -5,10 +5,10 @@ use crate::common::count_findings;
 use crate::common::run_cli_on_fixture;
 
 #[test]
-fn test_dead_code_kconfig_fixtures() {
-    let dead_code_dir = std::path::Path::new("tests/fixtures/dead_code");
+fn test_style_kconfig_fixtures() {
+    let style_dir = std::path::Path::new("tests/fixtures/style");
 
-    let entries = fs::read_dir(dead_code_dir).expect("failed to read dead code directory");
+    let entries = fs::read_dir(style_dir).expect("failed to read style directory");
 
     for entry in entries {
         let entry = entry.expect("bad dir entry");
