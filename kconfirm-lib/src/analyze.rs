@@ -7,6 +7,7 @@ use crate::dead_links::{self, LinkStatus, check_link};
 use crate::output::{Finding, Severity};
 use crate::symbol_table::ChoiceData;
 
+use log::error;
 use log::{debug, warn};
 use nom_kconfig::attribute::DefaultAttribute;
 use nom_kconfig::attribute::Expression;
@@ -422,7 +423,11 @@ fn handle_config(
                 // doing nothing for transitional right now
             }
             Optional | Visible(_) | Requires(_) | Option(_) => {
-                panic!("unexpected attribute encountered");
+                error!("Unexpected attribute encountered: {:?}", attribute);
+
+                if !cfg!(debug_assertions) {
+                    panic!();
+                }
             }
         }
     }
