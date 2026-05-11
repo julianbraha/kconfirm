@@ -46,12 +46,12 @@ fn test_linux_kconfig_analysis_v6_19() {
             "--linux-dir-path",
         ])
         .arg(&extract_dir)
-        // explicitly enable style, keep dead_links disabled
+        // explicitly enable style, keep dead_link disabled
         .args([
             "--enable",
             "duplicate_default_value,ungrouped_attribute",
             "--disable",
-            "dead_links",
+            "dead_link",
         ])
         .output()
         .expect("failed to run cargo");

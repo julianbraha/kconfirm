@@ -9,7 +9,7 @@ fn test_invalid_kconfig_fixture() {
     let output = run_cli_on_fixture(
         &failed_parse_file,
         "duplicate_default_value,ungrouped_attribute",
-        "dead_links",
+        "dead_link",
     );
     let findings = count_findings(&output);
 

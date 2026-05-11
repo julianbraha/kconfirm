@@ -21,7 +21,7 @@ fn test_style_kconfig_fixtures() {
         let output = run_cli_on_fixture(
             &path,
             "duplicate_default_value,ungrouped_attribute",
-            "dead_links",
+            "dead_link",
         );
         let findings = count_findings(&output);
 
@@ -39,7 +39,7 @@ fn test_style_kconfig_fixtures() {
     let output = run_cli_on_fixture(
         &golden_path,
         "duplicate_default_value,ungrouped_attribute",
-        "dead_links",
+        "dead_link",
     );
     let findings = count_findings(&output);
 

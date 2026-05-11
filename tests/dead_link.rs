@@ -10,7 +10,7 @@ fn test_dead_links() {
     let dead_link_path = PathBuf::from("tests/fixtures/dead_links/dead_link.Kconfig");
     let output = run_cli_on_fixture(
         &dead_link_path,
-        "dead_links",
+        "dead_link",
         "duplicate_default_value,ungrouped_attribute",
     );
     let findings = count_findings(&output);
@@ -25,7 +25,7 @@ fn test_dead_links() {
     let golden_path = PathBuf::from("tests/fixtures/golden.Kconfig");
     let output = run_cli_on_fixture(
         &golden_path,
-        "dead_links",
+        "dead_link",
         "duplicate_default_value,ungrouped_attribute",
     );
     let findings = count_findings(&output);
