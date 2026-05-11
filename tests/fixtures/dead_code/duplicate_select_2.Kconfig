@@ -1,0 +1,9 @@
+config X
+  bool
+
+config Y
+  select X
+  select X
+
+config Z
+  bool
