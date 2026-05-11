@@ -423,33 +423,69 @@ fn check_duplicate_ranges(
     info: &AttributeDef,
 ) -> Vec<Finding> {
     let mut findings = Vec::new();
-    let mut seen_conditions = HashSet::new();
-    let mut already_unconditional = false;
+
+    // unconditional ranges by bounds
+    let mut unconditional: HashSet<String> = HashSet::new();
+
+    // (bounds, condition)
+    let mut conditional: HashSet<(String, String)> = HashSet::new();
 
     for range in &info.kconfig_ranges {
-        if already_unconditional {
-            findings.push(Finding {
-                severity: Severity::Warning,
-                check: Check::DeadRange,
-                symbol: Some(var_symbol.to_owned()),
-                message: format!("dead range of {:?}", range),
-                arch: arch.to_owned(),
-            });
-            continue;
-        }
+        // uniquely identify the range bounds
+        let range_key = format!("{}..{}", range.lower_bound, range.upper_bound);
 
-        if let Some(cond) = range.r#if.clone() {
-            if is_duplicate(&mut seen_conditions, cond.to_string()) {
-                findings.push(Finding {
-                    severity: Severity::Warning,
-                    check: Check::DeadRange,
-                    symbol: Some(var_symbol.to_owned()),
-                    message: format!("dead range of {:?}", range),
-                    arch: arch.to_owned(),
-                });
+        match &range.r#if {
+            Some(cond) => {
+                let cond_str = cond.to_string();
+
+                // duplicate conditional range
+                if !conditional.insert((range_key.clone(), cond_str.clone())) {
+                    findings.push(Finding {
+                        severity: Severity::Warning,
+                        check: Check::DeadRange,
+                        symbol: Some(var_symbol.to_owned()),
+                        message: format!("duplicate range {:?} with condition {}", range, cond_str),
+                        arch: arch.to_owned(),
+                    });
+                }
+
+                // conditional range is dead if unconditional exists
+                if unconditional.contains(&range_key) {
+                    findings.push(Finding {
+                        severity: Severity::Warning,
+                        check: Check::DeadRange,
+                        symbol: Some(var_symbol.to_owned()),
+                        message: format!("dead range of {:?}", range),
+                        arch: arch.to_owned(),
+                    });
+                }
             }
-        } else {
-            already_unconditional = true;
+
+            None => {
+                // duplicate unconditional range
+                if !unconditional.insert(range_key.clone()) {
+                    findings.push(Finding {
+                        severity: Severity::Warning,
+                        check: Check::DeadRange,
+                        symbol: Some(var_symbol.to_owned()),
+                        message: format!("duplicate range {:?}", range),
+                        arch: arch.to_owned(),
+                    });
+                }
+
+                // previous conditionals with same bounds are dead
+                for (bounds, _) in &conditional {
+                    if bounds == &range_key {
+                        findings.push(Finding {
+                            severity: Severity::Warning,
+                            check: Check::DeadRange,
+                            symbol: Some(var_symbol.to_owned()),
+                            message: format!("dead range of {:?}", range),
+                            arch: arch.to_owned(),
+                        });
+                    }
+                }
+            }
         }
     }
 
