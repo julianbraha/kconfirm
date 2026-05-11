@@ -142,7 +142,7 @@ pub fn check_select_visible(var_symbol: &str, info: &TypeInfo) -> Vec<Finding> {
                                 // empty visiblity means that it is unconditionally visible, within the current arch (assuming arch is not `None`)
 
                                 findings.push(Finding {
-                                    severity: Severity::Error,
+                                    severity: Severity::Warning,
                                     check: Check::SelectVisible,
                                     symbol: Some(selector.to_owned()),
                                     message: message.clone(),
@@ -157,7 +157,7 @@ pub fn check_select_visible(var_symbol: &str, info: &TypeInfo) -> Vec<Finding> {
                             // empty visiblity means that it is unconditionally visible, within the current arch (assuming arch is not `None`)
 
                             findings.push(Finding {
-                                severity: Severity::Error,
+                                severity: Severity::Warning,
                                 check: Check::SelectVisible,
                                 symbol: Some(selector.to_owned()),
                                 message: message.clone(),
