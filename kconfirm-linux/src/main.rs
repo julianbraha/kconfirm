@@ -33,8 +33,7 @@ fn main() -> io::Result<()> {
     let cli_args = Args::parse();
     let mut enabled_checks: HashSet<Check> = [
         Check::DuplicateDependency,
-        Check::DeadRange,
-        Check::DeadSelect,
+        Check::DuplicateRange,
         Check::DuplicateSelect,
         Check::DeadDefault,
         Check::DuplicateDefault,
