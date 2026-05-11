@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
-use log::{debug, info, warn};
+use log::warn;
 use std::io;
-//use nom_kconfig::Entry;
-use nom_kconfig::KconfigFile;
-
-//use nom_kconfig::{KconfigInput, parse_kconfig};
-
 use std::path::PathBuf;
+
+use nom_kconfig::KconfigFile;
 
 // each architecture has its own directory, and config option.
 // most are the same, but powerpc / ppc and um / uml are not.
@@ -60,55 +57,37 @@ pub fn get_arch_kconfig_files(
 ) -> std::io::Result<Vec<LinuxKconfig>> {
     let mut arch_kconfigs = Vec::new();
 
-    // the Kconfig.debug files in each architecture aren't sourced, so we need to collect them and any other kconfig files recursively
-    for dir_entry in walkdir::WalkDir::new(arch_dir_path)
+    for entry in walkdir::WalkDir::new(arch_dir_path)
         .max_depth(2)
         .into_iter()
         .filter_map(Result::ok)
         .filter(|e| e.file_type().is_file())
     {
-        info!("dir_entry: {:?}", dir_entry);
-        let path = dir_entry.path();
+        let path = entry.path();
 
-        if path
+        // filter for "Kconfig" prefix
+        if !path
             .file_name()
             .and_then(|s| s.to_str())
-            .map(|ext| ext.starts_with("Kconfig")) // was .eq() but we need e.g. arch/arm64/Kconfig.platforms
-            .unwrap_or(false)
+            .map_or(false, |n| n.starts_with("Kconfig"))
         {
-            /*if path.components().any(|component| {
-                component
-                    .as_os_str()
-                    .to_str()
-                    .is_some_and(|s| s == "scripts" || s == "tools")
-            }) {
-                info!("NOTE: skipping the scripts dir for now...");
-                continue;
-            }*/
+            continue;
+        }
 
-            debug!("Opening: {}", path.display());
+        // get the arch from the path (e.g. x86 in /arch/x86/)
+        let relative_path = path.strip_prefix(&linux_root).unwrap();
+        let arch_dir = match relative_path.components().nth(1) {
+            Some(std::path::Component::Normal(n)) => n.to_string_lossy(),
+            _ => continue,
+        };
 
-            //let linux_root = PathBuf::from(LINUX_SOURCE);
-
-            let path_no_root = path.strip_prefix(&linux_root).unwrap();
-
-            let pathbuf_no_root = PathBuf::from(path_no_root);
-
-            let cur_kconfig_file = KconfigFile::new(linux_root.clone(), pathbuf_no_root.clone());
-
-            if let std::path::Component::Normal(n) = path_no_root.components().nth(1).unwrap() {
-                let arch_dir = n.to_str().unwrap();
-                debug!("arch_dir: {}", arch_dir);
-                if linux_root.join("arch").join(arch_dir).is_dir() {
-                    let arch_config_option = arch_dir_to_config(arch_dir);
-                    let arch_kconfig = LinuxKconfig {
-                        arch_config_option: Some(arch_config_option),
-                        file_contents: cur_kconfig_file.read_to_string()?,
-                        kconfig_file: cur_kconfig_file,
-                    };
-                    arch_kconfigs.push(arch_kconfig);
-                }
-            };
+        if linux_root.join("arch").join(&*arch_dir).is_dir() {
+            let kconfig_file = KconfigFile::new(linux_root.clone(), relative_path.to_path_buf());
+            arch_kconfigs.push(LinuxKconfig {
+                arch_config_option: Some(arch_dir_to_config(&arch_dir)),
+                file_contents: kconfig_file.read_to_string()?,
+                kconfig_file,
+            });
         }
     }
 
