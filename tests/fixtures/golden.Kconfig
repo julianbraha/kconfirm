@@ -1,16 +1,16 @@
 
 config X
-    bool "x"
-    default true
+    def_bool y
     help
         blah blah
         this website should always be available: https://www.google.com/generate_204
 
 config Y
     bool "y"
-    default true if X
+    default n if X
 
 config MODULES
+    bool
     modules
 
 config Z
@@ -19,7 +19,7 @@ config Z
 
 config A
     def_bool y
-    select X
+    select MODULES
     imply Z
 
 if A
