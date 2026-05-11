@@ -1,16 +1,16 @@
 # SPDX-License-Identifier: GPL-2.0
 [package]
 name = "kconfirm-lib"
-version = "0.8.0"
+version = "0.9.0"
 edition = "2024"
 rust-version.workspace = true
 
 [dependencies]
 nom-kconfig = { workspace = true }
-ureq = { version = "3.3", default-features = false, features = ["native-tls"] }
-regex = "1.12"
 log = { workspace = true }
 env_logger = { workspace = true }
+ureq = { version = "3.3", default-features = false, features = ["native-tls"] }
+regex = { version = "1.12", default-features = false }
 
 [features]
 default = []
