@@ -41,7 +41,6 @@ choice
     config D
         bool "d"
 
-
-    config D
+    config E
         bool "e"
 endchoice

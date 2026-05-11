@@ -1,3 +1,5 @@
+use nom_kconfig::attribute::Expression;
+
 // SPDX-License-Identifier: GPL-2.0-only
 use crate::{
     output::{Finding, Severity},
@@ -17,6 +19,7 @@ pub enum Check {
     DuplicateRange,
     DuplicateSelect,
     DeadDefault,
+    DeadCondition,
     DuplicateDefault,
     DuplicateDefaultValue,
 }
@@ -32,6 +35,7 @@ impl Check {
             Check::DuplicateRange => "duplicate_range",
             Check::DuplicateSelect => "duplicate_select",
             Check::DeadDefault => "dead_default",
+            Check::DeadCondition => "dead_condition",
             Check::DuplicateDefault => "duplicate_default",
             Check::DuplicateDefaultValue => "duplicate_default_value",
         }
@@ -48,6 +52,7 @@ pub fn parse_check(name: &str) -> Option<Check> {
         "duplicate_range" => Some(Check::DuplicateRange),
         "duplicate_select" => Some(Check::DuplicateSelect),
         "dead_default" => Some(Check::DeadDefault),
+        "dead_condition" => Some(Check::DeadCondition),
         "duplicate_default" => Some(Check::DuplicateDefault),
         "duplicate_default_value" => Some(Check::DuplicateDefaultValue),
         _ => None,
@@ -63,6 +68,33 @@ pub struct AnalysisArgs {
 impl AnalysisArgs {
     pub fn is_enabled(&self, check: Check) -> bool {
         self.enabled_checks.contains(&check)
+    }
+}
+
+pub fn check_dead_conditions(
+    arch: &Option<String>,
+    findings: &mut Vec<Finding>,
+    symbol: &str,
+    kconfig_dependencies: &[Expression],
+    attribute_conditions: Vec<&Expression>,
+    context: &str,
+) {
+    for attribute_condition in attribute_conditions.into_iter() {
+        if kconfig_dependencies.contains(attribute_condition) {
+            let message = format!(
+                "dead {} condition 'if {}' for config option: {}, this condition is a dependency and will always be true",
+                context,
+                attribute_condition.to_string(),
+                symbol,
+            );
+            findings.push(Finding {
+                severity: Severity::Warning,
+                check: Check::DeadCondition,
+                symbol: Some(symbol.to_owned()),
+                arch: arch.to_owned(),
+                message,
+            });
+        }
     }
 }
 

@@ -1,0 +1,7 @@
+config A
+  int
+  range 1 4 if B
+  depends on B
+
+config B
+  tristate
