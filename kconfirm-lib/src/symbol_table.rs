@@ -30,14 +30,14 @@ pub struct TypeInfo {
     pub attribute_defs: HashMap<Arch, Vec<(Vec<Expression>, AttributeDef)>>, // the innermost `Vec<Expression>` represents each nested condition that was reached (we will eventually need to AND them all)
 }
 
-// the dependencies are a vector because we may encounter multiple over time,
+// everything is a vector because we may encounter multiple over time,
 //   so we won't know until the end what the condition is.
 #[derive(Debug, Clone)]
 pub struct AttributeDef {
     pub kconfig_dependencies: Vec<OrExpression>,
     pub kconfig_ranges: Vec<Range>,
     pub kconfig_defaults: Vec<DefaultAttribute>,
-    pub visibility: Vec<OrExpression>,
+    pub visibility: Vec<Option<OrExpression>>,
     pub selects: Vec<(KconfigSymbol, Cond)>,
 }
 
@@ -50,13 +50,16 @@ impl TypeInfo {
         }
     }
 
+    // TODO: we should consider having separate functions for:
+    // 1. merge-inserting a redef of attributes (NOTE: the type definition is actually part of the redef, but we aren't handling type-redefinitions for now)
+    // 2. selectors
     fn insert(
         &mut self,
         kconfig_type: Option<Type>,
         raw_constraints: Vec<OrExpression>,
         kconfig_ranges: Vec<Range>,
         kconfig_defaults: Vec<DefaultAttribute>,
-        visibility: Vec<OrExpression>,
+        visibility: Vec<Option<OrExpression>>,
         arch: Option<String>,
         definition_condition: Vec<OrExpression>,
         selected_by: Option<(KconfigSymbol, Cond)>,
@@ -64,7 +67,7 @@ impl TypeInfo {
     ) {
         // type merge
         match (&self.kconfig_type, &kconfig_type) {
-            (None, Some(_)) => self.kconfig_type = kconfig_type,
+            (None, Some(_)) => self.kconfig_type = kconfig_type.clone(),
             (Some(_), Some(new)) if Some(new) != self.kconfig_type.as_ref() => {
                 // TODO: not doing anything with redefined types yet.
                 //       later, we will want to consider e.g. bool/def_bool the same type (and possibly int/hex?) but not bool/tristate, so we need to build out typechecking.
@@ -81,19 +84,28 @@ impl TypeInfo {
             merge_selected_by(&mut self.selected_by, arch.clone(), sb);
         }
 
-        // variable_info merge
-        insert_variable_info(
-            &mut self.attribute_defs,
-            arch,
-            definition_condition,
-            AttributeDef {
-                kconfig_dependencies: raw_constraints,
-                kconfig_ranges,
-                kconfig_defaults,
-                visibility,
-                selects,
-            },
-        );
+        // variable_info merge:
+        //   we only want to add an attribute redefinition if the things in the attribute def aren't empty
+        //   (the visibility is just additional info to capture)
+        if (&kconfig_type).is_some() // we need to ensure that we have an empty definition here if the config option had a type definition
+            || !raw_constraints.is_empty()
+            || !kconfig_ranges.is_empty()
+            || !kconfig_defaults.is_empty()
+            || !selects.is_empty()
+        {
+            insert_variable_info(
+                &mut self.attribute_defs,
+                arch,
+                definition_condition,
+                AttributeDef {
+                    kconfig_dependencies: raw_constraints,
+                    kconfig_ranges,
+                    kconfig_defaults,
+                    visibility,
+                    selects,
+                },
+            );
+        }
     }
 }
 
@@ -143,7 +155,7 @@ impl SymbolTable {
         raw_constraints: Vec<OrExpression>,
         kconfig_ranges: Vec<Range>,
         kconfig_defaults: Vec<DefaultAttribute>,
-        visibility: Vec<OrExpression>,
+        visibility: Vec<Option<OrExpression>>,
         arch: Arch,
         definition_condition: Vec<OrExpression>,
         selected_by: Option<(KconfigSymbol, Cond)>,

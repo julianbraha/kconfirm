@@ -53,6 +53,9 @@ fn main() -> io::Result<()> {
     env_logger::init();
     let cli_args = Args::parse();
     let mut enabled_checks: HashSet<Check> = [
+        Check::SelectVisible,
+        // need SMT solving before we can detect select-undefineds
+        //Check::SelectUndefined,
         Check::DuplicateDependency,
         Check::DuplicateRange,
         Check::DuplicateSelect,

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 use std::fmt;
 
+use crate::Check;
+
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Severity {
     Fatal,
@@ -23,7 +25,7 @@ impl fmt::Display for Severity {
 #[derive(Debug)]
 pub struct Finding {
     pub severity: Severity,
-    pub check: &'static str,
+    pub check: Check,
     pub symbol: Option<String>,
     pub message: String,
 }
@@ -34,16 +36,29 @@ impl fmt::Display for Finding {
             Some(s) => write!(
                 f,
                 "{} [{}] config {}: {}",
-                self.severity, self.check, s, self.message
+                self.severity,
+                self.check.as_str(),
+                s,
+                self.message
             ),
-            None => write!(f, "{} [{}] {}", self.severity, self.check, self.message),
+            None => write!(
+                f,
+                "{} [{}] {}",
+                self.severity,
+                self.check.as_str(),
+                self.message
+            ),
         }
     }
 }
 
 pub fn print_findings(mut findings: Vec<Finding>) {
     findings.sort_by(|a, b| {
-        (&a.severity, &a.check, &a.symbol).cmp(&(&b.severity, &b.check, &b.symbol))
+        (&a.severity, &a.check.as_str(), &a.symbol).cmp(&(
+            &b.severity,
+            &b.check.as_str(),
+            &b.symbol,
+        ))
     });
 
     for f in &findings {

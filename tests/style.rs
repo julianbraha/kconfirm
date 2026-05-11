@@ -18,7 +18,11 @@ fn test_style_kconfig_fixtures() {
             continue;
         }
 
-        let output = run_cli_on_fixture(&path, "style", "dead_links");
+        let output = run_cli_on_fixture(
+            &path,
+            "duplicate_default_value,ungrouped_attribute",
+            "dead_links",
+        );
         let findings = count_findings(&output);
 
         let file_name = path.file_name().unwrap().to_string_lossy();
@@ -32,7 +36,11 @@ fn test_style_kconfig_fixtures() {
 
     // Test the golden file from the parent fixtures directory
     let golden_path = std::path::Path::new("tests/fixtures/golden.Kconfig");
-    let output = run_cli_on_fixture(&golden_path, "style", "dead_links");
+    let output = run_cli_on_fixture(
+        &golden_path,
+        "duplicate_default_value,ungrouped_attribute",
+        "dead_links",
+    );
     let findings = count_findings(&output);
 
     assert_eq!(

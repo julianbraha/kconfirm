@@ -47,7 +47,12 @@ fn test_linux_kconfig_analysis_v6_19() {
         ])
         .arg(&extract_dir)
         // explicitly enable style, keep dead_links disabled
-        .args(["--enable", "style", "--disable", "dead_links"])
+        .args([
+            "--enable",
+            "duplicate_default_value,ungrouped_attribute",
+            "--disable",
+            "dead_links",
+        ])
         .output()
         .expect("failed to run cargo");
 
@@ -61,8 +66,8 @@ fn test_linux_kconfig_analysis_v6_19() {
     let line_count = stdout.lines().count();
 
     assert!(
-        line_count == 924,
-        "expected 924 lines, got {}\n See output:\n{}",
+        line_count == 2936,
+        "expected 2936 lines, got {}\n See output:\n{}",
         line_count,
         stdout
     );
