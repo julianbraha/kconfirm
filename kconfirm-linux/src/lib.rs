@@ -69,7 +69,7 @@ pub fn get_arch_kconfig_files(
         if !path
             .file_name()
             .and_then(|s| s.to_str())
-            .map_or(false, |n| n.starts_with("Kconfig"))
+            .is_some_and(|n| n.starts_with("Kconfig"))
         {
             continue;
         }

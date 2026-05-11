@@ -205,7 +205,7 @@ fn merge_selected_by(
     selected_by: (KconfigSymbol, Cond),
 ) {
     map.entry(selected_by.0)
-        .or_insert_with(Vec::new)
+        .or_default() // empty vec
         .push((arch, selected_by.1));
 }
 
@@ -216,6 +216,6 @@ fn insert_variable_info(
     info: AttributeDef,
 ) {
     map.entry(arch)
-        .or_insert_with(Vec::new)
+        .or_default() // empty vec
         .push((definition_condition, info));
 }
