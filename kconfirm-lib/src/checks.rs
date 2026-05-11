@@ -22,7 +22,7 @@ impl Check {
             Check::Style => "style",
             Check::DeadLinks => "dead_links",
             Check::DuplicateDependency => "duplicate_dependency",
-            Check::DuplicateRange => "dead_range",
+            Check::DuplicateRange => "duplicate_range",
             Check::DuplicateSelect => "duplicate_select",
             Check::DeadDefault => "dead_default",
             Check::DuplicateDefault => "duplicate_default",
@@ -35,7 +35,7 @@ pub fn parse_check(name: &str) -> Option<Check> {
         "style" => Some(Check::Style),
         "dead_links" => Some(Check::DeadLinks),
         "duplicate_dependency" => Some(Check::DuplicateDependency),
-        "dead_range" => Some(Check::DuplicateRange),
+        "duplicate_range" => Some(Check::DuplicateRange),
         "duplicate_select" => Some(Check::DuplicateSelect),
         "dead_default" => Some(Check::DeadDefault),
         "duplicate_default" => Some(Check::DuplicateDefault),
@@ -72,7 +72,7 @@ pub fn check_variable_info(
     }
 
     if args.is_enabled(Check::DuplicateRange) {
-        findings.extend(check_dead_ranges(var_symbol, info));
+        findings.extend(check_duplicate_ranges(var_symbol, info));
     }
 
     if args.is_enabled(Check::DuplicateSelect) {
@@ -127,7 +127,7 @@ fn check_duplicate_dependencies(
     findings
 }
 
-fn check_dead_ranges(var_symbol: &str, info: &AttributeDef) -> Vec<Finding> {
+fn check_duplicate_ranges(var_symbol: &str, info: &AttributeDef) -> Vec<Finding> {
     let mut findings = Vec::new();
     let mut seen_conditions = HashSet::new();
     let mut already_unconditional = false;
