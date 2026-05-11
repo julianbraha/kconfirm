@@ -96,7 +96,9 @@ pub fn check_reverse_ranges(
                     return Ok(b.to_owned());
                 }
                 RangeBound::Hex(b_str) => {
-                    return b_str.parse();
+                    let trimmed = b_str.trim_start_matches("0x").trim_start_matches("0X");
+
+                    return i64::from_str_radix(trimmed, 16);
                 }
                 RangeBound::Symbol(_) => {
                     // TODO: need SMT solving for this case
