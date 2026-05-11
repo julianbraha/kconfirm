@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-
 use crate::AnalysisArgs;
 use crate::Check;
 use crate::SymbolTable;

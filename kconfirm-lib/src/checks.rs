@@ -1,12 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0-only
 use log::error;
 use nom_kconfig::attribute::{Expression, range::RangeBound};
+use std::{collections::HashSet, num::ParseIntError};
 
-// SPDX-License-Identifier: GPL-2.0-only
 use crate::{
     output::{Finding, Severity},
     symbol_table::{AttributeDef, TypeInfo},
 };
-use std::{collections::HashSet, num::ParseIntError};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Check {

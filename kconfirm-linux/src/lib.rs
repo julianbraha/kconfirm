@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-
 use log::warn;
 use std::io;
 use std::path::PathBuf;

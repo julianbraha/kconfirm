@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0
 [package]
 name = "kconfirm"
 repository = "https://github.com/julianbraha/kconfirm"
