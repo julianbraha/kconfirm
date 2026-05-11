@@ -389,28 +389,71 @@ fn check_duplicate_implies(
     info: &AttributeDef,
 ) -> Vec<Finding> {
     let mut findings = Vec::new();
-    let mut seen_conditions = HashSet::new();
-    let mut seen_values = HashSet::new();
-    for imp in &info.implies {
-        let cond_str = match &imp.1 {
-            None => String::new(),
-            Some(imp_cond) => imp_cond.to_string(),
-        };
 
-        if is_duplicate(&mut seen_values, &imp.0) {
-            if is_duplicate(&mut seen_conditions, cond_str) {
-                findings.push(Finding {
-                    severity: Severity::Warning,
-                    check: Check::DuplicateImply,
-                    symbol: Some(var_symbol.to_owned()),
-                    message: format!("duplicate imply of {:?}", imp),
-                    arch: arch.to_owned(),
-                });
-            } else {
-                // TODO: this branch is a style check: duplicate value (could merge the conditions)
+    // symbols implied unconditionally
+    let mut unconditional: HashSet<String> = HashSet::new();
+
+    // (symbol, condition)
+    let mut conditional: HashSet<(String, String)> = HashSet::new();
+
+    for imp in &info.implies {
+        let imply_var = imp.0.clone();
+
+        match &imp.1 {
+            Some(cond) => {
+                let cond_str = cond.to_string();
+
+                // duplicate conditional imply
+                if !conditional.insert((imply_var.clone(), cond_str.clone())) {
+                    findings.push(Finding {
+                        severity: Severity::Warning,
+                        check: Check::DuplicateImply,
+                        symbol: Some(var_symbol.to_owned()),
+                        message: format!(
+                            "duplicate imply of {:?} with condition {}",
+                            imp.0, cond_str
+                        ),
+                        arch: arch.to_owned(),
+                    });
+                }
+
+                // conditional imply is dead if unconditional exists
+                if unconditional.contains(&imply_var) {
+                    findings.push(Finding {
+                        severity: Severity::Warning,
+                        check: Check::DuplicateImply,
+                        symbol: Some(var_symbol.to_owned()),
+                        message: format!("dead imply of {:?}", imp),
+                        arch: arch.to_owned(),
+                    });
+                }
             }
-        } else {
-            seen_conditions.insert(cond_str);
+
+            None => {
+                // duplicate unconditional imply
+                if !unconditional.insert(imply_var.clone()) {
+                    findings.push(Finding {
+                        severity: Severity::Warning,
+                        check: Check::DuplicateImply,
+                        symbol: Some(var_symbol.to_owned()),
+                        message: format!("duplicate imply of {:?}", imp),
+                        arch: arch.to_owned(),
+                    });
+                }
+
+                // previous conditionals with same symbol are dead
+                for (sym, _) in &conditional {
+                    if sym == &imply_var {
+                        findings.push(Finding {
+                            severity: Severity::Warning,
+                            check: Check::DuplicateImply,
+                            symbol: Some(var_symbol.to_owned()),
+                            message: format!("dead imply of {:?}", imp),
+                            arch: arch.to_owned(),
+                        });
+                    }
+                }
+            }
         }
     }
 
