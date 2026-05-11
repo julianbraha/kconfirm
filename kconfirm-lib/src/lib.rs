@@ -17,7 +17,6 @@ use log::error;
 use nom_kconfig::Entry;
 
 use nom_kconfig::{KconfigInput, parse_kconfig};
-use std::collections::HashSet;
 
 pub fn check_kconfig(
     args: AnalysisArgs,

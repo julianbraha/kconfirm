@@ -7,7 +7,7 @@ use crate::dead_links::{self, LinkStatus, check_link};
 use crate::output::{Finding, Severity};
 use crate::symbol_table::ChoiceData;
 
-use log::{debug, info, warn};
+use log::{debug, warn};
 use nom_kconfig::attribute::DefaultAttribute;
 use nom_kconfig::attribute::Expression;
 use nom_kconfig::attribute::Select;
@@ -233,13 +233,12 @@ fn handle_config(
     let mut kconfig_selects: Vec<Select> = Vec::new();
     let mut kconfig_ranges = Vec::new();
     let mut kconfig_defaults = Vec::new();
+
+    debug!("attributes are: {:?}", &entry.attributes);
     /*
      * style check: ungrouped attributes
      * - need to check that dependencies, selects, ranges, and defaults are each kept together.
      */
-
-    info!("attributes are: {:?}", &entry.attributes);
-
     let mut attribute_grouping_checker = AttributeGroupingChecker::new();
     let mut dead_link_checker = DeadLinkChecker::new();
     for attribute in entry.attributes {
