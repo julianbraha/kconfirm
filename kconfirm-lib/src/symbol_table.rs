@@ -1,18 +1,22 @@
 // SPDX-License-Identifier: GPL-2.0-only
 use log::debug;
 use nom_kconfig::attribute::DefaultAttribute;
+use nom_kconfig::attribute::Expression;
 use nom_kconfig::attribute::OrExpression;
 use nom_kconfig::attribute::Range;
 use nom_kconfig::attribute::Select;
 use nom_kconfig::attribute::r#type::Type;
 use std::collections::HashMap;
-//use std::mem::Discriminant;
+use std::collections::hash_map;
+
+type Arch = Option<String>;
+type Cond = Option<Expression>;
 
 pub struct KconfigVarDependency {
     pub var: String,
 
     // NOTE: this will be None if the variable has no dependencies. will happen when we encounter an unconstrained variable e.g. that just selects other variables.
-    pub dependencies: Option<nom_kconfig::attribute::Expression>, // aka `OrExpression` type
+    pub dependencies: Cond,
     pub selects: Vec<Select>,
     pub range: Option<Range>,
 }
@@ -21,36 +25,42 @@ pub struct KconfigVarDependency {
 // because we need to know all of the selectors.
 #[derive(Debug, Clone)]
 pub struct TypeInfo {
-    pub kconfig_type: Option<Type>, // None when we don't know the type (it's just a dependency that popped up somewhere)
+    pub kconfig_type: Option<Type>, // 'None' when we don't know the type (e.g. if it's a dangling reference)
 
     // maps the selector to an (ARCH, select_cond)
     // - if the ARCH is None, then it's not arch-specific
     // if the select_cond is None, then it's unconditional
-    pub selected_by:
-        HashMap<String, Vec<(Option<String>, Option<nom_kconfig::attribute::Expression>)>>, // .0 only selects it when .1 is true.
+    pub selected_by: HashMap<String, Vec<(Arch, Cond)>>, // .0 only selects it when .1 is true.
 
     // there is one of these per entry (each entry expected to have a different definedness condition)
     // maps architecture option name (or none if not arch-specific) to:
     // [([condition], config definition)]
     // - NOTE: there can be multiple partial definitions under the same condition, or mutually-exclusive conditions, or a subset condition.
-    pub variable_info:
-        HashMap<Option<String>, Vec<(Vec<nom_kconfig::attribute::Expression>, VariableInfo)>>, // the innermost `Vec<nom_kconfig::attribute::Expression>` represents each nested condition that was reached (we will basically need to AND them all)
+    pub variable_info: HashMap<Arch, Vec<(Vec<Expression>, VariableInfo)>>, // the innermost `Vec<nom_kconfig::attribute::Expression>` represents each nested condition that was reached (we will basically need to AND them all)
 }
 
 // the dependencies are a vector because we may encounter multiple over time,
 //   so we won't know until the end what the condition is.
 #[derive(Debug, Clone)]
 pub struct VariableInfo {
-    pub kconfig_dependencies: Vec<nom_kconfig::attribute::OrExpression>,
+    pub kconfig_dependencies: Vec<OrExpression>,
     pub kconfig_ranges: Vec<Range>,
     pub kconfig_defaults: Vec<DefaultAttribute>,
-    pub visibility: Vec<nom_kconfig::attribute::OrExpression>,
-    pub selects: Vec<(String, Option<nom_kconfig::attribute::Expression>)>,
+    pub visibility: Vec<OrExpression>,
+    pub selects: Vec<(String, Option<Expression>)>,
 }
 
 impl TypeInfo {
-    fn new_solved(
-        _symbol: String,
+    fn new_empty() -> Self {
+        Self {
+            kconfig_type: None,
+            selected_by: HashMap::new(),
+            variable_info: HashMap::new(),
+        }
+    }
+
+    fn insert(
+        &mut self,
         kconfig_type: Option<Type>,
         raw_constraints: Vec<OrExpression>,
         kconfig_ranges: Vec<Range>,
@@ -58,96 +68,39 @@ impl TypeInfo {
         visibility: Vec<OrExpression>,
         arch: Option<String>,
         definition_condition: Vec<OrExpression>,
-        selected_by: Option<(String, Option<nom_kconfig::attribute::Expression>)>,
-        selects: Vec<(String, Option<nom_kconfig::attribute::Expression>)>,
-    ) -> Self {
-        let mut selected_by_map = HashMap::new();
-
-        TypeInfo {
-            kconfig_type: kconfig_type,
-            selected_by: {
-                if let Some(s) = selected_by {
-                    selected_by_map.insert(s.0, vec![(arch.clone(), s.1)]);
-                }
-
-                selected_by_map
-            },
-            variable_info: {
-                let mut h = HashMap::new();
-
-                h.insert(
-                    arch,
-                    vec![(
-                        definition_condition,
-                        VariableInfo {
-                            kconfig_dependencies: raw_constraints,
-                            kconfig_ranges,
-                            kconfig_defaults,
-                            visibility,
-                            selects,
-                        },
-                    )],
-                );
-
-                h
-            },
-        }
-    }
-
-    fn add_variable_info(
-        &mut self,
-        raw_constraints: Vec<OrExpression>,
-        kconfig_ranges: Vec<Range>,
-        kconfig_defaults: Vec<DefaultAttribute>,
-        visibility: Vec<OrExpression>,
-        arch: Option<String>,
-        definition_condition: Vec<OrExpression>,
-        selects: Vec<(String, Option<OrExpression>)>,
+        selected_by: Option<(String, Option<Expression>)>,
+        selects: Vec<(String, Option<Expression>)>,
     ) {
-        let existing_var_info = self.variable_info.get_mut(&arch);
-
-        match existing_var_info {
-            None => {
-                self.variable_info.insert(
-                    arch,
-                    vec![(
-                        definition_condition,
-                        VariableInfo {
-                            kconfig_dependencies: raw_constraints,
-                            kconfig_ranges,
-                            kconfig_defaults,
-                            visibility,
-                            selects,
-                        },
-                    )],
+        // type merge (unchanged logic)
+        match (&self.kconfig_type, &kconfig_type) {
+            (None, Some(_)) => self.kconfig_type = kconfig_type,
+            (Some(_), Some(new)) if Some(new) != self.kconfig_type.as_ref() => {
+                debug!(
+                    "NOTE: different type {:?} (existing {:?})",
+                    kconfig_type, self.kconfig_type
                 );
             }
-            Some(existing) => {
-                debug!("the existing variable info is {:?}", existing);
-                existing.push((
-                    definition_condition,
-                    VariableInfo {
-                        kconfig_dependencies: raw_constraints,
-                        kconfig_ranges,
-                        kconfig_defaults,
-                        visibility,
-                        selects,
-                    },
-                ));
-            }
+            _ => {}
         }
 
-        /* to see what the existing type definition was:
-
-        debug!("the existing data is: {:?}", &existing_var_info);
-        if let Some(existing) = existing_var_info {
-            assert!(existing.kconfig_dependencies.is_empty());
-            assert!(existing.kconfig_ranges.is_empty());
-            assert!(existing.kconfig_defaults.is_empty());
-            assert!(existing.visibility.is_empty());
-            assert!(existing.selects.is_empty());
+        // selected_by merge
+        if let Some(sb) = selected_by {
+            merge_selected_by(&mut self.selected_by, arch.clone(), sb);
         }
-        */
+
+        // variable_info merge
+        insert_variable_info(
+            &mut self.variable_info,
+            arch,
+            definition_condition,
+            VariableInfo {
+                kconfig_dependencies: raw_constraints,
+                kconfig_ranges,
+                kconfig_defaults,
+                visibility,
+                selects,
+            },
+        );
     }
 }
 
@@ -193,96 +146,71 @@ impl SymbolTable {
     pub fn merge_insert_new_solved(
         &mut self,
         var: String,
-
         kconfig_type: Option<Type>,
         raw_constraints: Vec<OrExpression>,
-
         kconfig_ranges: Vec<Range>,
         kconfig_defaults: Vec<DefaultAttribute>,
-
         visibility: Vec<OrExpression>,
         arch: Option<String>,
         definition_condition: Vec<OrExpression>,
-        selected_by: Option<(String, Option<nom_kconfig::attribute::Expression>)>,
-        selects: Vec<(String, Option<nom_kconfig::attribute::Expression>)>,
+        selected_by: Option<(String, Option<Expression>)>,
+        selects: Vec<(String, Option<Expression>)>,
     ) {
-        let existing = self.raw.remove(&var);
+        let entry = self.raw.entry(var.clone());
 
-        match existing {
-            None => {
-                self.raw.insert(
-                    var.clone(),
-                    TypeInfo::new_solved(
-                        var,
-                        kconfig_type,
-                        raw_constraints,
-                        kconfig_ranges,
-                        kconfig_defaults,
-                        visibility,
-                        arch,
-                        definition_condition,
-                        selected_by,
-                        selects,
-                    ),
-                );
-            }
-
-            Some(e) => {
-                let mut existing_type_info = e;
-
-                if kconfig_type.is_some() && existing_type_info.kconfig_type.is_none() {
-                    existing_type_info.kconfig_type = kconfig_type;
-                } else if kconfig_type.is_some() && kconfig_type != existing_type_info.kconfig_type
-                {
-                    // NOTE: this sometimes prints a message just because the prompt text changes, e.g. ARCH_FORCE_MAX_ORDER stays int type but sometimes adds "Maximum zone order" text
-                    debug!(
-                        "NOTE: different type {:?} for var {} (existing type: {:?})",
-                        kconfig_type, var, existing_type_info.kconfig_type
-                    );
-                }
-
-                // we always want to extend the selectors list.
-
-                if let Some(select_info) = selected_by {
-                    let existing_select_info =
-                        existing_type_info.selected_by.get_mut(&select_info.0);
-                    match existing_select_info {
-                        None => {
-                            existing_type_info
-                                .selected_by
-                                .insert(select_info.0, vec![(arch.clone(), select_info.1)]);
-                        }
-                        Some(extisting_select_info) => {
-                            extisting_select_info.append(&mut vec![(arch.clone(), select_info.1)]);
-                        }
-                    }
-                }
-
-                /*
-                 * what if we check for an existing VariableInfo with the same definedness condition,
-                 * and merge this info with that one?
-                 *
-                 * otherwise, we can check why we're reaching this line multiple times for the same config option
-                 * under the same definedness condition
-                 */
-                debug!("adding a variable info for var {:?}", var);
-                existing_type_info.add_variable_info(
+        match entry {
+            hash_map::Entry::Vacant(v) => {
+                let mut t = TypeInfo::new_empty();
+                t.insert(
+                    kconfig_type,
                     raw_constraints,
                     kconfig_ranges,
                     kconfig_defaults,
                     visibility,
                     arch,
                     definition_condition,
+                    selected_by,
                     selects,
                 );
-
-                // TODO: options can be redefined differently under different IF-conditions, see TCP_CONG_CUBIC
-                //       - has nothing to do with arch!
-                //       - how do we handle these?
-                //       - AND I think if they're "redefined" under the same conditions, then you just add the attributes together!
-
-                self.raw.insert(var, existing_type_info);
+                v.insert(t);
             }
-        };
+
+            hash_map::Entry::Occupied(mut o) => {
+                let t = o.get_mut();
+
+                t.insert(
+                    kconfig_type,
+                    raw_constraints,
+                    kconfig_ranges,
+                    kconfig_defaults,
+                    visibility,
+                    arch,
+                    definition_condition,
+                    selected_by,
+                    selects,
+                );
+            }
+        }
     }
+}
+
+fn merge_selected_by(
+    map: &mut HashMap<String, Vec<(Arch, Option<Expression>)>>,
+    arch: Option<String>,
+    selected_by: (String, Option<Expression>),
+) {
+    map.entry(selected_by.0)
+        .or_insert_with(Vec::new)
+        .push((arch, selected_by.1));
+}
+
+fn insert_variable_info(
+    map: &mut HashMap<Arch, Vec<(Vec<Expression>, VariableInfo)>>,
+    arch: Option<String>,
+    definition_condition: Vec<Expression>,
+    info: VariableInfo,
+) {
+    map.entry(arch)
+        .or_insert_with(Vec::new)
+        .push((definition_condition, info));
 }
