@@ -60,8 +60,8 @@ fn test_coreboot_kconfig_analysis_v24_12() {
     let line_count = stdout.lines().count();
 
     assert!(
-        line_count == 284,
-        "expected 284 lines, got {}\n See output:\n{}",
+        line_count == 280,
+        "expected 280 lines, got {}\n See output:\n{}",
         line_count,
         stdout
     );

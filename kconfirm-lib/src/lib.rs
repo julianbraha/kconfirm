@@ -193,6 +193,7 @@ pub fn check_kconfig(
                 let mut all_default_vals = HashSet::new();
 
                 for default_and_if in &kconfig_redefinition.kconfig_defaults {
+                    let default_val = default_and_if.expression.to_string();
                     if already_unconditional_default {
                         findings.push(Finding {
                             severity: Severity::Warning,
@@ -203,15 +204,16 @@ pub fn check_kconfig(
                     }
 
                     if args.is_enabled(Check::Style) {
-                        let default_val = default_and_if.expression.to_string();
-
-                        if is_duplicate(&mut all_default_vals, default_val.to_string()) {
-                            findings.push(Finding {
-                                severity: Severity::Style,
-                                check: "duplicate_default_value",
-                                symbol: Some(var_symbol.clone()),
-                                message: format!("duplicate default value of {:?}; consider combining the conditions with a logical-or: ||", default_val),
-                            });
+                        // only want to check the conditional default values. duplicate unconditional values are different from style.
+                        if default_and_if.r#if.is_some() {
+                            if is_duplicate(&mut all_default_vals, default_val.clone()) {
+                                findings.push(Finding {
+                                    severity: Severity::Style,
+                                    check: "duplicate_default_value",
+                                    symbol: Some(var_symbol.clone()),
+                                    message: format!("duplicate default value of {:?}; consider combining the conditions with a logical-or: ||", &default_val),
+                                });
+                            }
                         }
                     }
 
@@ -230,9 +232,7 @@ pub fn check_kconfig(
                         }
                     }
 
-                    let unconditional_default = default_cond.is_none();
-
-                    if unconditional_default {
+                    if default_cond.is_none() {
                         already_unconditional_default = true;
                     }
                 }
