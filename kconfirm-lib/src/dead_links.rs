@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-only
+
+use curl::easy::Easy;
 use regex::Regex;
 use std::sync::OnceLock;
 use std::time::Duration;
-use ureq::{
-    Agent,
-    tls::{RootCerts, TlsConfig, TlsProvider},
-};
 
 /*
  * during testing, "Unreachable" and "ServerError" seem to be a 50/50
@@ -22,25 +20,12 @@ pub enum LinkStatus {
     UnsupportedScheme(String), // e.g. ftp, git
 }
 
-static AGENT: OnceLock<Agent> = OnceLock::new();
+static CURL_INIT: OnceLock<()> = OnceLock::new();
 
-fn agent() -> &'static Agent {
-    const TEN_SECONDS: Duration = Duration::from_secs(10);
-
-    AGENT.get_or_init(|| {
-        Agent::config_builder()
-            .timeout_global(Some(TEN_SECONDS))
-            .max_redirects(0) // we want to output any redirects as a finding
-            .http_status_as_error(false)
-            .tls_config(
-                TlsConfig::builder()
-                    .provider(TlsProvider::NativeTls)
-                    .root_certs(RootCerts::PlatformVerifier)
-                    .build(),
-            )
-            .build()
-            .into()
-    })
+fn init_curl() {
+    CURL_INIT.get_or_init(|| {
+        curl::init();
+    });
 }
 
 pub fn check_link(url: &str) -> LinkStatus {
@@ -55,24 +40,76 @@ pub fn check_link(url: &str) -> LinkStatus {
 }
 
 fn check_http(url: &str) -> LinkStatus {
-    match agent().head(url).call() {
-        Ok(response) => match response.status().as_u16() {
-            200..=299 => LinkStatus::Ok,
-            301 | 302 => {
-                let location = response
-                    .headers()
-                    .get("location")
-                    .and_then(|v| v.to_str().ok())
-                    .unwrap_or("unknown")
-                    .to_string();
-                LinkStatus::Redirected(location)
+    init_curl();
+
+    let mut easy = Easy::new();
+
+    if let Err(e) = easy.url(url) {
+        return LinkStatus::Unreachable(e.to_string());
+    }
+
+    // HEAD request
+    if let Err(e) = easy.nobody(true) {
+        return LinkStatus::Unreachable(e.to_string());
+    }
+
+    // 10 second timeout
+    if let Err(e) = easy.timeout(Duration::from_secs(10)) {
+        return LinkStatus::Unreachable(e.to_string());
+    }
+
+    // disable redirects so we can report them
+    if let Err(e) = easy.follow_location(false) {
+        return LinkStatus::Unreachable(e.to_string());
+    }
+
+    // optional: set a user agent
+    let _ = easy.useragent("link-checker/1.0");
+
+    let mut location_header: Option<String> = None;
+
+    {
+        let mut transfer = easy.transfer();
+
+        // capture headers
+        if let Err(e) = transfer.header_function(|header| {
+            if let Ok(s) = std::str::from_utf8(header) {
+                let lower = s.to_ascii_lowercase();
+
+                if lower.starts_with("location:") {
+                    if let Some((_, value)) = s.split_once(':') {
+                        location_header = Some(value.trim().to_string());
+                    }
+                }
             }
-            403 | 429 => LinkStatus::ProbablyBlocked,
-            404 => LinkStatus::NotFound,
-            500..=599 => LinkStatus::ServerError,
-            _ => LinkStatus::ProbablyBlocked,
-        },
-        Err(e) => LinkStatus::Unreachable(e.to_string()),
+
+            true
+        }) {
+            return LinkStatus::Unreachable(e.to_string());
+        }
+
+        if let Err(e) = transfer.perform() {
+            return LinkStatus::Unreachable(e.to_string());
+        }
+    }
+
+    let status = match easy.response_code() {
+        Ok(code) => code,
+        Err(e) => return LinkStatus::Unreachable(e.to_string()),
+    };
+
+    match status {
+        200..=299 => LinkStatus::Ok,
+
+        301 | 302 => LinkStatus::Redirected(location_header.unwrap_or_else(|| "unknown".into())),
+
+        403 | 429 => LinkStatus::ProbablyBlocked,
+
+        404 => LinkStatus::NotFound,
+
+        500..=599 => LinkStatus::ServerError,
+
+        _ => LinkStatus::ProbablyBlocked,
     }
 }
 
