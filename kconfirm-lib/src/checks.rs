@@ -635,6 +635,20 @@ fn check_defaults(
     for default in &info.kconfig_defaults {
         let val_str = default.expression.to_string();
 
+        let has_real_condition = match &default.r#if {
+            Some(cond) => {
+                let cond_str = cond.to_string();
+                !cond_str.is_empty()
+            }
+            None => false,
+        };
+
+        let is_value_dup = if has_real_condition {
+            is_duplicate(&mut seen_values, val_str.clone())
+        } else {
+            false
+        };
+
         if already_unconditional && args.is_enabled(Check::DeadDefault) {
             findings.push(Finding {
                 severity: Severity::Warning,
@@ -646,7 +660,7 @@ fn check_defaults(
         }
 
         if args.is_enabled(Check::DuplicateDefaultValue) {
-            if default.r#if.is_some() && is_duplicate(&mut seen_values, val_str.clone()) {
+            if default.r#if.is_some() && is_value_dup {
                 findings.push(Finding {
                     severity: Severity::Style,
                     check: Check::DuplicateDefaultValue,
@@ -663,7 +677,7 @@ fn check_defaults(
         match &default.r#if {
             Some(cond) => {
                 if is_duplicate(&mut seen_conditions, cond.to_string()) {
-                    if is_duplicate(&mut seen_values, val_str.clone()) {
+                    if is_value_dup {
                         if args.is_enabled(Check::DuplicateDefault) {
                             findings.push(Finding {
                                 severity: Severity::Warning,
