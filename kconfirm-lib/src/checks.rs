@@ -493,7 +493,7 @@ fn check_duplicate_ranges(
                 if !conditional.insert((range_key.clone(), cond_str.clone())) {
                     findings.push(Finding {
                         severity: Severity::Warning,
-                        check: Check::DeadRange,
+                        check: Check::DuplicateRange,
                         symbol: Some(var_symbol.to_owned()),
                         message: format!("duplicate range {:?} with condition {}", range, cond_str),
                         arch: arch.to_owned(),
