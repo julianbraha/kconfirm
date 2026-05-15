@@ -428,7 +428,7 @@ fn handle_config(
             Optional | Visible(_) | Requires(_) | Option(_) => {
                 error!("Unexpected attribute encountered: {:?}", attribute);
 
-                if !cfg!(debug_assertions) {
+                if cfg!(debug_assertions) {
                     panic!();
                 }
             }
