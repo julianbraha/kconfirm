@@ -18,7 +18,8 @@ resolver = "3"
 rust-version = "1.85.0"
 
 [workspace.dependencies]
-nom-kconfig = "0.10"
-
+nom-kconfig = { version = "0.10", default-features = false, features = [
+    "display",
+] }
 log = "0.4"
 libc = "0.2"
