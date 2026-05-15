@@ -1,38 +1,157 @@
 // SPDX-License-Identifier: GPL-2.0-only
-use clap::Parser;
+
+use libc::c_char;
+use libc::getopt_long;
+use libc::option;
 use std::collections::HashSet;
-use std::io::{self};
+use std::env;
+use std::ffi::CStr;
+use std::ffi::CString;
+use std::io;
 use std::path::PathBuf;
+use std::ptr;
 
 use nom_kconfig::KconfigInput;
 
+use kconfirm_lib::AnalysisArgs;
+use kconfirm_lib::Check;
 use kconfirm_lib::check_kconfig;
 use kconfirm_lib::output::print_findings;
 use kconfirm_lib::parse_check;
-use kconfirm_lib::{AnalysisArgs, Check};
 use kconfirm_linux::collect_kconfig_root_files;
 
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
+const NO_ARGUMENT: i32 = 0;
+const REQUIRED_ARGUMENT: i32 = 1;
+
+unsafe extern "C" {
+    static mut optarg: *mut c_char;
+    static mut optind: i32;
+}
+
+fn split_csv_arg(dst: &mut Vec<String>, value: &str) {
+    dst.extend(
+        value
+            .split(',')
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_string()),
+    );
+}
+
+fn parse_args() -> Result<Args, String> {
+    let mut linux_path: Option<PathBuf> = None;
+    let mut enable = Vec::new();
+    let mut disable = Vec::new();
+
+    let raw_args: Vec<String> = env::args().collect();
+
+    let cstrings: Vec<CString> = raw_args
+        .iter()
+        .map(|s| CString::new(s.as_str()).unwrap())
+        .collect();
+
+    let mut argv: Vec<*mut c_char> = cstrings.iter().map(|s| s.as_ptr() as *mut c_char).collect();
+
+    argv.push(ptr::null_mut());
+
+    let argc = (argv.len() - 1) as i32;
+
+    let long_options = [
+        option {
+            name: b"linux-path\0".as_ptr() as *const c_char,
+            has_arg: REQUIRED_ARGUMENT,
+            flag: ptr::null_mut(),
+            val: 'l' as i32,
+        },
+        option {
+            name: b"enable\0".as_ptr() as *const c_char,
+            has_arg: REQUIRED_ARGUMENT,
+            flag: ptr::null_mut(),
+            val: 'e' as i32,
+        },
+        option {
+            name: b"disable\0".as_ptr() as *const c_char,
+            has_arg: REQUIRED_ARGUMENT,
+            flag: ptr::null_mut(),
+            val: 'd' as i32,
+        },
+        option {
+            name: ptr::null(),
+            has_arg: NO_ARGUMENT,
+            flag: ptr::null_mut(),
+            val: 0,
+        },
+    ];
+
+    unsafe {
+        // reset getopt global state
+        optind = 1;
+
+        loop {
+            let c = getopt_long(
+                argc,
+                argv.as_mut_ptr(),
+                b"l:e:d:\0".as_ptr() as *const c_char,
+                long_options.as_ptr(),
+                ptr::null_mut(),
+            );
+
+            if c == -1 {
+                break;
+            }
+
+            match c as u8 as char {
+                'l' => {
+                    let arg = CStr::from_ptr(optarg).to_string_lossy().into_owned();
+
+                    linux_path = Some(PathBuf::from(arg));
+                }
+
+                'e' => {
+                    let arg = CStr::from_ptr(optarg).to_string_lossy().into_owned();
+
+                    split_csv_arg(&mut enable, &arg);
+                }
+
+                'd' => {
+                    let arg = CStr::from_ptr(optarg).to_string_lossy().into_owned();
+
+                    split_csv_arg(&mut disable, &arg);
+                }
+
+                '?' => {
+                    return Err("invalid argument".into());
+                }
+
+                _ => {}
+            }
+        }
+    }
+
+    let linux_path = linux_path.ok_or("--linux-path is required")?;
+
+    Ok(Args {
+        linux_path,
+        enable,
+        disable,
+    })
+}
+
+#[derive(Debug)]
 struct Args {
-    #[arg(long, required = true)]
     linux_path: PathBuf,
-
-    // enable specific checks (repeatable or comma-separated)
-    #[arg(long, value_delimiter = ',', num_args = 1..)]
     enable: Vec<String>,
-
-    // disable specific checks
-    #[arg(long, value_delimiter = ',', num_args = 1..)]
     disable: Vec<String>,
 }
 
 fn main() -> io::Result<()> {
-    env_logger::init();
-    let cli_args = Args::parse();
+    let cli_args = parse_args().unwrap_or_else(|e| {
+        eprintln!("error: {e}");
+        std::process::exit(1);
+    });
+
     let mut enabled_checks: HashSet<Check> = [
         // need SMT solving before we can detect select-undefineds
-        //Check::SelectUndefined,
+        // Check::SelectUndefined,
         Check::DuplicateDependency,
         Check::DuplicateRange,
         Check::DeadRange,
@@ -63,6 +182,7 @@ fn main() -> io::Result<()> {
     let analysis_args = AnalysisArgs { enabled_checks };
 
     let kconfig_files = collect_kconfig_root_files(cli_args.linux_path)?;
+
     let kconfig_inputs = kconfig_files
         .iter()
         .map(|kconfig| {
@@ -72,6 +192,7 @@ fn main() -> io::Result<()> {
             (kconfig.arch_config_option.clone(), kconfig_input)
         })
         .collect();
+
     let findings = check_kconfig(analysis_args, kconfig_inputs);
 
     print_findings(findings);

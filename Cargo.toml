@@ -21,6 +21,4 @@ rust-version = "1.85.0"
 nom-kconfig = "0.10"
 
 log = "0.4"
-env_logger = "0.11"
-
-clap = { version = "4.6", features = ["derive"] }
+libc = "0.2"
