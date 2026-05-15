@@ -88,7 +88,7 @@ impl AnalysisArgs {
     }
 }
 
-// returns an Error if a hex range bound cannot be parsed as an i64
+// returns an Error if a hex range bound cannot be parsed as an u64
 pub fn check_reverse_ranges(
     arch: &Option<String>,
     var_symbol: &str,
@@ -97,16 +97,16 @@ pub fn check_reverse_ranges(
     let mut findings = Vec::new();
 
     for range in &info.kconfig_ranges {
-        // returns an Error if a hex range bound cannot be parsed as an i64
-        fn range_bound_to_int(range_bound: &RangeBound) -> Result<i64, ParseIntError> {
+        // returns an Error if a hex range bound cannot be parsed as an u64
+        fn range_bound_to_int(range_bound: &RangeBound) -> Result<i128, ParseIntError> {
             match range_bound {
                 RangeBound::Number(b) => {
-                    return Ok(b.to_owned());
+                    return Ok(b.to_owned() as i128);
                 }
                 RangeBound::Hex(b_str) => {
                     let trimmed = b_str.trim_start_matches("0x").trim_start_matches("0X");
 
-                    return i64::from_str_radix(trimmed, 16);
+                    return i128::from_str_radix(trimmed, 16);
                 }
                 RangeBound::Symbol(_) => {
                     // TODO: need SMT solving for this case
@@ -146,7 +146,7 @@ pub fn check_reverse_ranges(
             }
             (Result::Err(_), _) | (_, Result::Err(_)) => {
                 error!(
-                    "couldn't parse hex range bound as i64 for config option: {}",
+                    "couldn't parse hex range bound as i128 for config option: {}",
                     var_symbol
                 );
                 // still want to check the other range bounds
