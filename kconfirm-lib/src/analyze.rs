@@ -2,12 +2,18 @@
 use crate::AnalysisArgs;
 use crate::Check;
 use crate::SymbolTable;
-use crate::dead_links::{self, LinkStatus, check_link};
-use crate::output::{Finding, Severity};
+use crate::dead_links::LinkStatus;
+use crate::dead_links::check_link;
+use crate::dead_links::{self};
+use crate::output::Finding;
+use crate::output::Severity;
 use crate::symbol_table::ChoiceData;
 
+use log::debug;
 use log::error;
-use log::{debug, warn};
+use log::warn;
+use nom_kconfig::Attribute::*;
+use nom_kconfig::Entry;
 use nom_kconfig::attribute::DefaultAttribute;
 use nom_kconfig::attribute::Expression;
 use nom_kconfig::attribute::Imply;
@@ -18,10 +24,6 @@ use nom_kconfig::entry::Config;
 use nom_kconfig::entry::If;
 use nom_kconfig::entry::Menu;
 use nom_kconfig::entry::Source;
-use nom_kconfig::{
-    Attribute::*,
-    Entry::{self},
-};
 use std::collections::HashSet;
 use std::option::Option;
 
