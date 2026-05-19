@@ -7,8 +7,10 @@ rust-version.workspace = true
 
 [dependencies]
 nom-kconfig = { workspace = true }
+curl = { version = "0.4" }
 log = { workspace = true }
-libc = { workspace = true }
+env_logger = { workspace = true }
+regex = { version = "1.12", default-features = false }
 
 [features]
 default = []
