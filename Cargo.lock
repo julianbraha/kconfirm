@@ -255,9 +255,8 @@ dependencies = [
 name = "kconfirm-linux"
 version = "0.9.0"
 dependencies = [
- "clap",
- "env_logger",
  "kconfirm-lib",
+ "libc",
  "log",
  "nom-kconfig",
 ]
@@ -311,7 +310,6 @@ dependencies = [
  "nom",
  "nom_locate",
  "regex",
- "serde",
  "tracing",
 ]
 
@@ -437,16 +435,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "91c1b7e4904c873ef0710c1f407dde2e6287de2bebc1bbbf7d430bb7cbffd939"
 dependencies = [
  "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "serde"
-version = "1.0.228"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a8e94ea7f378bd32cbbd37198a4a91436180c5bb472411e48b5ec2e2124ae9e"
-dependencies = [
- "serde_core",
- "serde_derive",
 ]
 
 [[package]]
