@@ -726,14 +726,15 @@ fn check_defaults(
 
         match &default.r#if {
             Some(cond) => {
-                if is_duplicate(&mut seen_conditions, cond.to_string()) {
+                let cond_str = cond.to_string();
+                if is_duplicate(&mut seen_conditions, cond_str.clone()) {
                     if is_value_dup {
                         if args.is_enabled(Check::DuplicateDefault) {
                             findings.push(Finding {
                                 severity: Severity::Warning,
                                 check: Check::DuplicateDefault,
                                 symbol: Some(var_symbol.to_owned()),
-                                message: format!("duplicate default condition of {:?}", cond),
+                                message: format!("duplicate default condition of {}", cond_str),
                                 arch: arch.to_owned(),
                             });
                         }
