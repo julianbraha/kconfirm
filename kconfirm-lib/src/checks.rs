@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 use log::error;
+use nom_kconfig::attribute::AndExpression;
 use nom_kconfig::attribute::Expression;
+use nom_kconfig::attribute::Term;
 use nom_kconfig::attribute::range::RangeBound;
 use std::collections::HashSet;
 use std::num::ParseIntError;
@@ -233,6 +235,7 @@ pub fn check_constant_conditions(
         context: &str,
     ) {
         for attribute_condition in attribute_conditions.into_iter() {
+            // check if the attribute condition is contained
             if kconfig_dependencies.contains(attribute_condition) {
                 let message = format!(
                     "constant {} condition 'if {}' for config option: {}, this condition is a dependency and will always be true",
@@ -247,6 +250,53 @@ pub fn check_constant_conditions(
                     arch: arch.to_owned(),
                     message,
                 });
+            }
+
+            // check if the negative is contained
+            let negative_attribute_condition = match attribute_condition {
+                Expression::Term(and_expression) => {
+                    match and_expression {
+                        AndExpression::Term(term) => {
+                            match term {
+                                Term::Not(n) => {
+                                    // it's already negative, so let's check if the positive is contained
+                                    Some(Expression::Term(AndExpression::Term(Term::Atom(
+                                        n.to_owned(),
+                                    ))))
+                                }
+                                Term::Atom(a) => Some(Expression::Term(AndExpression::Term(
+                                    Term::Not(a.to_owned()),
+                                ))),
+                            }
+                        }
+                        _ => {
+                            // do nothing
+                            None
+                        }
+                    }
+                }
+                _ => {
+                    // do nothing
+                    None
+                }
+            };
+
+            if let Some(negative) = negative_attribute_condition {
+                if kconfig_dependencies.contains(&negative) {
+                    let message = format!(
+                        "constant {} condition 'if {}' for config option: {}, the negation of this condition is a dependency and will always be false",
+                        context,
+                        attribute_condition.to_string(),
+                        symbol,
+                    );
+                    findings.push(Finding {
+                        severity: Severity::Warning,
+                        check: Check::ConstantCondition,
+                        symbol: Some(symbol.to_owned()),
+                        arch: arch.to_owned(),
+                        message,
+                    });
+                }
             }
         }
     }
