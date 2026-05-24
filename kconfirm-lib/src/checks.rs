@@ -680,11 +680,10 @@ fn check_defaults(
     let mut findings = Vec::new();
     let mut seen_conditions = HashSet::new();
     let mut seen_values = HashSet::new();
+    let mut seen_unconditional_values: HashSet<String> = HashSet::new();
     let mut already_unconditional = false;
-
     for default in &info.kconfig_defaults {
         let val_str = default.expression.to_string();
-
         let has_real_condition = match &default.r#if {
             Some(cond) => {
                 let cond_str = cond.to_string();
@@ -692,21 +691,36 @@ fn check_defaults(
             }
             None => false,
         };
-
         let is_value_dup = if has_real_condition {
             is_duplicate(&mut seen_values, val_str.clone())
         } else {
             false
         };
 
-        if already_unconditional && args.is_enabled(Check::DeadDefault) {
-            findings.push(Finding {
-                severity: Severity::Warning,
-                check: Check::DeadDefault,
-                symbol: Some(var_symbol.to_owned()),
-                message: format!("dead default of {}", val_str),
-                arch: arch.to_owned(),
-            });
+        if already_unconditional {
+            // if the default is itself unconditional AND repeats a value
+            // we've already seen unconditionally, it's a duplicate, not "dead".
+            let is_unconditional_dup =
+                default.r#if.is_none() && seen_unconditional_values.contains(&val_str);
+            if is_unconditional_dup {
+                if args.is_enabled(Check::DuplicateDefault) {
+                    findings.push(Finding {
+                        severity: Severity::Warning,
+                        check: Check::DuplicateDefault,
+                        symbol: Some(var_symbol.to_owned()),
+                        message: format!("duplicate default of {}", val_str),
+                        arch: arch.to_owned(),
+                    });
+                }
+            } else if args.is_enabled(Check::DeadDefault) {
+                findings.push(Finding {
+                    severity: Severity::Warning,
+                    check: Check::DeadDefault,
+                    symbol: Some(var_symbol.to_owned()),
+                    message: format!("dead default of {}", val_str),
+                    arch: arch.to_owned(),
+                });
+            }
         }
 
         if args.is_enabled(Check::DuplicateDefaultValue) {
@@ -723,10 +737,11 @@ fn check_defaults(
                 });
             }
         }
-
         match &default.r#if {
             Some(cond) => {
                 let cond_str = cond.to_string();
+
+                // duplicate default + condition = duplicate default
                 if is_duplicate(&mut seen_conditions, cond_str.clone()) {
                     if is_value_dup {
                         if args.is_enabled(Check::DuplicateDefault) {
@@ -734,11 +749,12 @@ fn check_defaults(
                                 severity: Severity::Warning,
                                 check: Check::DuplicateDefault,
                                 symbol: Some(var_symbol.to_owned()),
-                                message: format!("duplicate default condition of {}", cond_str),
+                                message: format!("dead default of {}", default),
                                 arch: arch.to_owned(),
                             });
                         }
                     } else {
+                        // duplicate condition only = dead default
                         if args.is_enabled(Check::DeadDefault) {
                             findings.push(Finding {
                                 severity: Severity::Warning,
@@ -752,10 +768,10 @@ fn check_defaults(
                 }
             }
             None => {
+                seen_unconditional_values.insert(val_str.clone());
                 already_unconditional = true;
             }
         }
     }
-
     findings
 }
