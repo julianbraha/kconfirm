@@ -20,6 +20,20 @@ pub enum LinkStatus {
     UnsupportedScheme(String), // e.g. ftp, git
 }
 
+impl LinkStatus {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            LinkStatus::Ok => "Ok",
+            LinkStatus::ProbablyBlocked => "ProbablyBlocked",
+            LinkStatus::Redirected(_s) => "Redirected",
+            LinkStatus::NotFound => "NotFound",
+            LinkStatus::ServerError => "ServerError",
+            LinkStatus::Unreachable(_s) => "Unreachable",
+            LinkStatus::UnsupportedScheme(_s) => "UnsupportedScheme",
+        }
+    }
+}
+
 static CURL_INIT: OnceLock<()> = OnceLock::new();
 
 fn init_curl() {

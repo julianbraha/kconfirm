@@ -140,8 +140,10 @@ impl DeadLinkChecker {
                     check: Check::DeadLink,
                     symbol: symbol.map(|s| s.to_string()),
                     message: format!(
-                        "{} contains link {} with status {:?}",
-                        context, link, status
+                        "{} contains link {} with status {}",
+                        context,
+                        link,
+                        status.as_str()
                     ),
                     arch: arch.to_owned(),
                 });
