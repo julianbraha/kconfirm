@@ -42,11 +42,11 @@ struct Args {
 
     // enable specific checks (repeatable or comma-separated)
     #[arg(long, value_delimiter = ',', num_args = 1..)]
-    enable: Vec<String>,
+    enable_check: Vec<String>,
 
     // disable specific checks
     #[arg(long, value_delimiter = ',', num_args = 1..)]
-    disable: Vec<String>,
+    disable_check: Vec<String>,
 }
 
 fn main() -> io::Result<()> {
@@ -70,14 +70,14 @@ fn main() -> io::Result<()> {
     .collect();
 
     // apply --enable
-    for name in &cli_args.enable {
+    for name in &cli_args.enable_check {
         if let Some(c) = parse_check(name) {
             enabled_checks.insert(c);
         }
     }
 
     // apply --disable
-    for name in &cli_args.disable {
+    for name in &cli_args.disable_check {
         if let Some(c) = parse_check(name) {
             enabled_checks.remove(&c);
         }
