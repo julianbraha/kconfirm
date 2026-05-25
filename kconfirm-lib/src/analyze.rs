@@ -277,10 +277,15 @@ fn handle_config(
                         format!("ungrouped default {}", db),
                     );
                 }
-                Type::Bool(unconditional_prompt) => {
-                    if unconditional_prompt.is_some() {
+                Type::Bool(prompt) => {
+                    if prompt.is_some() {
                         found_prompt = true;
                     }
+
+                    if let Some(c) = kconfig_type.clone().r#if {
+                        child_ctx = child_ctx.with_visibility(Some(c));
+                    }
+
                     config_type = Some(kconfig_type);
                 }
 
@@ -301,12 +306,20 @@ fn handle_config(
                         r#if: kconfig_type.clone().r#if,
                     };
 
+                    if let Some(c) = kconfig_type.clone().r#if {
+                        child_ctx = child_ctx.with_visibility(Some(c));
+                    }
+
                     kconfig_defaults.push(default_attribute);
                     config_type = Some(kconfig_type);
                 }
                 Type::Tristate(unconditional_prompt) => {
                     if unconditional_prompt.is_some() {
                         found_prompt = true;
+                    }
+
+                    if let Some(c) = kconfig_type.clone().r#if {
+                        child_ctx = child_ctx.with_visibility(Some(c));
                     }
 
                     config_type = Some(kconfig_type.clone())
@@ -316,18 +329,32 @@ fn handle_config(
                         found_prompt = true;
                     }
 
+                    if let Some(c) = kconfig_type.clone().r#if {
+                        child_ctx = child_ctx.with_visibility(Some(c));
+                    }
+
                     config_type = Some(kconfig_type);
                 }
                 Type::Int(unconditional_prompt) => {
                     if unconditional_prompt.is_some() {
                         found_prompt = true;
                     }
+
+                    if let Some(c) = kconfig_type.clone().r#if {
+                        child_ctx = child_ctx.with_visibility(Some(c));
+                    }
+
                     config_type = Some(kconfig_type);
                 }
                 Type::String(unconditional_prompt) => {
                     if unconditional_prompt.is_some() {
                         found_prompt = true;
                     }
+
+                    if let Some(c) = kconfig_type.clone().r#if {
+                        child_ctx = child_ctx.with_visibility(Some(c));
+                    }
+
                     config_type = Some(kconfig_type);
                 }
             },
