@@ -19,8 +19,8 @@ cd ../..
 
 cargo build --release -p kconfirm-cli
 
-hyperfine --warmup 3 --runs 10 --export-json evaluation/linux_times.json './target/release/kconfirm-cli --linux-dir-path evaluation/linux'
-hyperfine --warmup 3 --runs 10 --export-json evaluation/coreboot_times.json './target/release/kconfirm-cli --coreboot-dir-path evaluation/coreboot'
-hyperfine --warmup 3 --runs 10 --export-json evaluation/u-boot_times.json './target/release/kconfirm-cli --other-kconfig-path evaluation/u-boot/Kconfig'
-hyperfine --warmup 3 --runs 10 --export-json evaluation/fiasco_times.json './target/release/kconfirm-cli --other-kconfig-path evaluation/fiasco/src/Kconfig'
-hyperfine --warmup 3 --runs 10 --export-json evaluation/busybox_times.json './target/release/kconfirm-cli --other-kconfig-path evaluation/busybox/Config.in'
+hyperfine --warmup 3 --runs 10 --export-json evaluation/linux_times.json './target/release/kconfirm-cli --linux-dir-path evaluation/linux > evaluation/linux_findings.txt'
+hyperfine --warmup 3 --runs 10 --export-json evaluation/coreboot_times.json './target/release/kconfirm-cli --coreboot-dir-path evaluation/coreboot > evaluation/coreboot_findings.txt'
+hyperfine --warmup 3 --runs 10 --export-json evaluation/u-boot_times.json './target/release/kconfirm-cli --other-kconfig-path evaluation/u-boot/Kconfig > evaluation/u-boot_findings.txt'
+hyperfine --warmup 3 --runs 10 --export-json evaluation/fiasco_times.json './target/release/kconfirm-cli --other-kconfig-path evaluation/fiasco/src/Kconfig > evaluation/fiasco_findings.txt'
+hyperfine --warmup 3 --runs 10 --export-json evaluation/busybox_times.json './target/release/kconfirm-cli --other-kconfig-path evaluation/busybox/Config.in > evaluation/busybox_findings.txt'
