@@ -29,7 +29,16 @@ cargo build --release
 
 # Evaluation
 
-Assuming you have already compiled kconfirm, and you have `make`, `git`, and `Hyperfine` v1.20 installed:
+System setup, from fresh Ubuntu 26.04:
+```
+sudo apt install git libssl-dev pkg-config make cargo
+cargo install hyperfine --version 1.20.0
+
+# ensure hyperfine is on path
+export PATH="$HOME/.cargo/bin:$PATH"
+```
+
+Run the evaluation:
 ```
 bash evaluate.sh
 ```

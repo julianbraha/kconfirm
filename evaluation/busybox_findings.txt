@@ -1,0 +1,93 @@
+WARNING [duplicate_dependency] config CHCON: duplicate dependency on SELINUX
+WARNING [duplicate_dependency] config FEATURE_SH_EMBEDDED_SCRIPTS: duplicate dependency on SHELL_ASH || SHELL_HUSH
+WARNING [duplicate_dependency] config FEATURE_SH_EXTRA_QUIET: duplicate dependency on SHELL_ASH || SHELL_HUSH
+WARNING [duplicate_dependency] config FEATURE_SH_HISTFILESIZE: duplicate dependency on SHELL_ASH || SHELL_HUSH
+WARNING [duplicate_dependency] config FEATURE_SH_MATH: duplicate dependency on SHELL_ASH || SHELL_HUSH
+WARNING [duplicate_dependency] config FEATURE_SH_NOFORK: duplicate dependency on SHELL_ASH || SHELL_HUSH
+WARNING [duplicate_dependency] config FEATURE_SH_READ_FRAC: duplicate dependency on SHELL_ASH || SHELL_HUSH
+WARNING [duplicate_dependency] config FEATURE_SH_STANDALONE: duplicate dependency on SHELL_ASH || SHELL_HUSH
+WARNING [duplicate_dependency] config FEATURE_VOLUMEID_BCACHE: duplicate dependency on VOLUMEID
+WARNING [duplicate_dependency] config FEATURE_VOLUMEID_BTRFS: duplicate dependency on VOLUMEID
+WARNING [duplicate_dependency] config FEATURE_VOLUMEID_CRAMFS: duplicate dependency on VOLUMEID
+WARNING [duplicate_dependency] config FEATURE_VOLUMEID_EROFS: duplicate dependency on VOLUMEID
+WARNING [duplicate_dependency] config FEATURE_VOLUMEID_EXFAT: duplicate dependency on VOLUMEID
+WARNING [duplicate_dependency] config FEATURE_VOLUMEID_EXT: duplicate dependency on VOLUMEID
+WARNING [duplicate_dependency] config FEATURE_VOLUMEID_F2FS: duplicate dependency on VOLUMEID
+WARNING [duplicate_dependency] config FEATURE_VOLUMEID_FAT: duplicate dependency on VOLUMEID
+WARNING [duplicate_dependency] config FEATURE_VOLUMEID_HFS: duplicate dependency on VOLUMEID
+WARNING [duplicate_dependency] config FEATURE_VOLUMEID_ISO9660: duplicate dependency on VOLUMEID
+WARNING [duplicate_dependency] config FEATURE_VOLUMEID_JFS: duplicate dependency on VOLUMEID
+WARNING [duplicate_dependency] config FEATURE_VOLUMEID_LINUXRAID: duplicate dependency on VOLUMEID
+WARNING [duplicate_dependency] config FEATURE_VOLUMEID_LINUXSWAP: duplicate dependency on VOLUMEID
+WARNING [duplicate_dependency] config FEATURE_VOLUMEID_LUKS: duplicate dependency on VOLUMEID
+WARNING [duplicate_dependency] config FEATURE_VOLUMEID_MINIX: duplicate dependency on VOLUMEID
+WARNING [duplicate_dependency] config FEATURE_VOLUMEID_NILFS: duplicate dependency on VOLUMEID
+WARNING [duplicate_dependency] config FEATURE_VOLUMEID_NTFS: duplicate dependency on VOLUMEID
+WARNING [duplicate_dependency] config FEATURE_VOLUMEID_OCFS2: duplicate dependency on VOLUMEID
+WARNING [duplicate_dependency] config FEATURE_VOLUMEID_REISERFS: duplicate dependency on VOLUMEID
+WARNING [duplicate_dependency] config FEATURE_VOLUMEID_ROMFS: duplicate dependency on VOLUMEID
+WARNING [duplicate_dependency] config FEATURE_VOLUMEID_SYSV: duplicate dependency on VOLUMEID
+WARNING [duplicate_dependency] config FEATURE_VOLUMEID_UBIFS: duplicate dependency on VOLUMEID
+WARNING [duplicate_dependency] config FEATURE_VOLUMEID_UDF: duplicate dependency on VOLUMEID
+WARNING [duplicate_dependency] config FEATURE_VOLUMEID_XFS: duplicate dependency on VOLUMEID
+WARNING [duplicate_dependency] config GETENFORCE: duplicate dependency on SELINUX
+WARNING [duplicate_dependency] config GETSEBOOL: duplicate dependency on SELINUX
+WARNING [duplicate_dependency] config LOAD_POLICY: duplicate dependency on SELINUX
+WARNING [duplicate_dependency] config MATCHPATHCON: duplicate dependency on SELINUX
+WARNING [duplicate_dependency] config RESTORECON: duplicate dependency on SELINUX
+WARNING [duplicate_dependency] config RUNCON: duplicate dependency on SELINUX
+WARNING [duplicate_dependency] config SELINUXENABLED: duplicate dependency on SELINUX
+WARNING [duplicate_dependency] config SESTATUS: duplicate dependency on SELINUX
+WARNING [duplicate_dependency] config SETENFORCE: duplicate dependency on SELINUX
+WARNING [duplicate_dependency] config SETFILES: duplicate dependency on SELINUX
+WARNING [duplicate_dependency] config SETSEBOOL: duplicate dependency on SELINUX
+WARNING [select_visible] config ADDGROUP: selects the visible LONG_OPTS; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config ADDUSER: selects the visible LONG_OPTS; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config ASH: selects the visible SHELL_ASH; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BASH_IS_ASH: selects the visible SHELL_ASH; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BASH_IS_HUSH: selects the visible SHELL_HUSH; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BLKID: selects the visible VOLUMEID; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BUNZIP2: selects the visible FEATURE_BZIP2_DECOMPRESS; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BZCAT: selects the visible FEATURE_BZIP2_DECOMPRESS; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config CROND: selects the visible FEATURE_SYSLOG; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config DEVFSD: selects the visible FEATURE_SYSLOG; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config DPKG: selects the visible FEATURE_SEAMLESS_GZ; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config DPKG_DEB: selects the visible FEATURE_SEAMLESS_GZ; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config FAKEIDENTD: selects the visible FEATURE_SYSLOG; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config FEATURE_MOUNT_LABEL: selects the visible VOLUMEID; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config FEATURE_MOUNT_NFS: selects the visible FEATURE_SYSLOG; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config FEATURE_MTAB_SUPPORT: selects the visible FEATURE_MOUNT_FAKE; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config FEATURE_SWAPONOFF_LABEL: selects the visible VOLUMEID; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config FEATURE_WGET_HTTPS: selects the visible TLS; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config FINDFS: selects the visible VOLUMEID; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config FSFREEZE: selects the visible LONG_OPTS; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config GETTY: selects the visible FEATURE_SYSLOG; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config GUNZIP: selects the visible FEATURE_GZIP_DECOMPRESS; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config HUSH: selects the visible SHELL_HUSH; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config HWCLOCK: selects the visible LONG_OPTS; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config INETD: selects the visible FEATURE_SYSLOG; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config INIT: selects the visible FEATURE_SYSLOG; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config IPADDR: selects the visible FEATURE_IP_ADDRESS; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config IPLINK: selects the visible FEATURE_IP_LINK; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config IPNEIGH: selects the visible FEATURE_IP_NEIGH; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config IPROUTE: selects the visible FEATURE_IP_ROUTE; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config IPRULE: selects the visible FEATURE_IP_RULE; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config IPTUNNEL: selects the visible FEATURE_IP_TUNNEL; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config LINUXRC: selects the visible FEATURE_SYSLOG; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config LOGGER: selects the visible FEATURE_SYSLOG; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config LOGIN: selects the visible FEATURE_SYSLOG; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config NAMEIF: selects the visible FEATURE_SYSLOG; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config NOLOGIN_DEPENDENCIES: selects the visible CAT; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config NOLOGIN_DEPENDENCIES: selects the visible ECHO; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config NOLOGIN_DEPENDENCIES: selects the visible SLEEP; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config PASSWD: selects the visible FEATURE_SYSLOG; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config SETPRIV: selects the visible LONG_OPTS; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config SH_IS_ASH: selects the visible SHELL_ASH; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config SH_IS_HUSH: selects the visible SHELL_HUSH; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config SSL_CLIENT: selects the visible TLS; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config SU: selects the visible FEATURE_SYSLOG; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config SULOGIN: selects the visible FEATURE_SYSLOG; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config TELNETD: selects the visible FEATURE_SYSLOG; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config UNSHARE: selects the visible LONG_OPTS; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config ZCAT: selects the visible FEATURE_GZIP_DECOMPRESS; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config ZCIP: selects the visible FEATURE_SYSLOG; consider using 'depends on' or 'imply' instead

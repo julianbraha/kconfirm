@@ -1,0 +1,214 @@
+WARNING [constant_condition] config CBFS_SIZE: constant default condition 'if BOARD_PURISM_BASEBOARD_LIBREM_JSL' for config option: CBFS_SIZE, this condition is a dependency and will always be true
+WARNING [constant_condition] config CHROMEOS_WIFI_SAR: constant default condition 'if CHROMEOS' for config option: CHROMEOS_WIFI_SAR, this condition is a dependency and will always be true
+WARNING [constant_condition] config MAINBOARD_FAMILY: constant default condition 'if BOARD_GOOGLE_BASEBOARD_DEDEDE' for config option: MAINBOARD_FAMILY, this condition is a dependency and will always be true
+WARNING [constant_condition] config MAINBOARD_FAMILY: constant default condition 'if BOARD_PURISM_BASEBOARD_LIBREM_JSL' for config option: MAINBOARD_FAMILY, this condition is a dependency and will always be true
+WARNING [constant_condition] config MAINBOARD_PART_NUMBER: constant default condition 'if BOARD_PINE64_ROCKPRO64' for config option: MAINBOARD_PART_NUMBER, this condition is a dependency and will always be true
+WARNING [constant_condition] config MAINBOARD_PART_NUMBER: constant default condition 'if BOARD_PURISM_BASEBOARD_LIBREM_JSL' for config option: MAINBOARD_PART_NUMBER, this condition is a dependency and will always be true
+WARNING [constant_condition] config PC80_SYSTEM: constant default condition 'if ARCH_X86' for config option: PC80_SYSTEM, this condition is a dependency and will always be true
+WARNING [constant_condition] config VARIANT_DIR: constant default condition 'if BOARD_INTEL_ELKHARTLAKE_CRB' for config option: VARIANT_DIR, this condition is a dependency and will always be true
+WARNING [constant_condition] config VGA_BIOS_ID: constant default condition 'if BOARD_PURISM_BASEBOARD_LIBREM_JSL' for config option: VGA_BIOS_ID, this condition is a dependency and will always be true
+WARNING [dead_default] config FMDFILE: dead default of "src/mainboard/\$(CONFIG_MAINBOARD_DIR)/vboot.fmd"
+WARNING [dead_default] config PAYLOAD_FIT_SUPPORT: dead default of y
+WARNING [duplicate_dependency] config BOOTMEDIA_SMM_BWP: duplicate dependency on VENDOR_STARLABS
+WARNING [duplicate_dependency] config BOOTMEDIA_SMM_BWP_RUNTIME_OPTION: duplicate dependency on VENDOR_STARLABS
+WARNING [duplicate_dependency] config CAVIUM_BDK_DDR_TUNE_ECC_ENABLE: duplicate dependency on CAVIUM_BDK
+WARNING [duplicate_dependency] config CAVIUM_BDK_DDR_TUNE_HW_OFFSETS: duplicate dependency on CAVIUM_BDK
+WARNING [duplicate_dependency] config CAVIUM_BDK_DDR_TUNE_WRITE_OFFSETS: duplicate dependency on CAVIUM_BDK
+WARNING [duplicate_dependency] config CAVIUM_BDK_VERBOSE_DRAM: duplicate dependency on CAVIUM_BDK
+WARNING [duplicate_dependency] config CAVIUM_BDK_VERBOSE_DRAM_TEST: duplicate dependency on CAVIUM_BDK
+WARNING [duplicate_dependency] config CAVIUM_BDK_VERBOSE_INIT: duplicate dependency on CAVIUM_BDK
+WARNING [duplicate_dependency] config CAVIUM_BDK_VERBOSE_PCIE: duplicate dependency on CAVIUM_BDK
+WARNING [duplicate_dependency] config CAVIUM_BDK_VERBOSE_PCIE_CONFIG: duplicate dependency on CAVIUM_BDK
+WARNING [duplicate_dependency] config CAVIUM_BDK_VERBOSE_PHY: duplicate dependency on CAVIUM_BDK
+WARNING [duplicate_dependency] config CAVIUM_BDK_VERBOSE_QLM: duplicate dependency on CAVIUM_BDK
+WARNING [duplicate_dependency] config COREDOOM_WAD_FILE: duplicate dependency on COREDOOM_SECONDARY_PAYLOAD
+WARNING [duplicate_dependency] config DRIVERS_EFI_CAPSULE_OTHER_PUBLIC_CERT: duplicate dependency on DRIVERS_EFI_GENERATE_CAPSULE
+WARNING [duplicate_dependency] config DRIVERS_EFI_CAPSULE_SIGNER_PRIVATE_CERT: duplicate dependency on DRIVERS_EFI_GENERATE_CAPSULE
+WARNING [duplicate_dependency] config DRIVERS_EFI_CAPSULE_TRUSTED_PUBLIC_CERT: duplicate dependency on DRIVERS_EFI_GENERATE_CAPSULE
+WARNING [duplicate_dependency] config DRIVERS_EFI_FW_INFO: duplicate dependency on VENDOR_STARLABS
+WARNING [duplicate_dependency] config EC_51NB_NPCE985LA0DX_FIRMWARE: duplicate dependency on EC_51NB_NPCE985LA0DX
+WARNING [duplicate_dependency] config GRUB2_INCLUDE_RUNTIME_CONFIG_FILE: duplicate dependency on PAYLOAD_BUILD_GRUB2
+WARNING [duplicate_dependency] config HAVE_HDA_DMIC: duplicate dependency on VENDOR_STARLABS
+WARNING [duplicate_dependency] config IDT_IN_EVERY_STAGE: duplicate dependency on ARCH_X86
+WARNING [duplicate_dependency] config MB_COMMON_DIR: duplicate dependency on VENDOR_STARLABS
+WARNING [duplicate_dependency] config MEMTEST_MAIN: duplicate dependency on MEMTEST_SECONDARY_PAYLOAD
+WARNING [duplicate_dependency] config MEMTEST_REVISION: duplicate dependency on MEMTEST_SECONDARY_PAYLOAD
+WARNING [duplicate_dependency] config MEMTEST_STABLE: duplicate dependency on MEMTEST_SECONDARY_PAYLOAD
+WARNING [duplicate_dependency] config MRC_FILE: duplicate dependency on HAVE_MRC
+WARNING [duplicate_dependency] config OPENSBI_BLOB: duplicate dependency on RISCV_OPENSBI
+WARNING [duplicate_dependency] config PAGING_IN_CACHE_AS_RAM: duplicate dependency on ARCH_X86
+WARNING [duplicate_dependency] config POSTCAR_STAGE: duplicate dependency on ARCH_X86
+WARNING [duplicate_dependency] config RESET_VECTOR_IN_RAM: duplicate dependency on ARCH_X86
+WARNING [duplicate_dependency] config SIPI_VECTOR_IN_ROM: duplicate dependency on ARCH_X86
+WARNING [duplicate_dependency] config STARLABS_ACPI_EFI_OPTION_SMI: duplicate dependency on VENDOR_STARLABS
+WARNING [duplicate_dependency] config STARLABS_NVME_POWER_SEQUENCE: duplicate dependency on VENDOR_STARLABS
+WARNING [duplicate_dependency] config VENDORCODE_ELTAN_VBOOT_SIGNED_MANIFEST: duplicate dependency on VENDORCODE_ELTAN_VBOOT
+WARNING [duplicate_dependency] config VENDORCODE_ELTAN_VBOOT_USE_SHA512: duplicate dependency on VENDORCODE_ELTAN_VBOOT
+WARNING [duplicate_select] config BOARD_SPECIFIC_OPTIONS: duplicate select of "ACPI_COMMON_MADT_GICC_V3"
+WARNING [duplicate_select] config BOARD_SPECIFIC_OPTIONS: duplicate select of "ACPI_GTDT"
+WARNING [duplicate_select] config BOARD_SPECIFIC_OPTIONS: duplicate select of "FLATTENED_DEVICE_TREE"
+WARNING [select_visible] config BOARD_ASUS_H610I_PLUS_D4: selects the visible DRIVERS_UART_8250IO; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_CWWK_ADL_N_COMMON: selects the visible DRIVERS_UART_8250IO; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_DELL_SKLKBL_DESKTOPS_COMMON: selects the visible INTEL_GMA_ADD_VBT; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_DELL_SNB_IVB_WORKSTATIONS: selects the visible DRIVERS_UART_8250IO; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_AGAH: selects the visible DRIVERS_GENESYSLOGIC_GL9750; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_ANAHERA: selects the visible DRIVERS_GENESYSLOGIC_GL9750; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_ANAHERA: selects the visible DRIVERS_GENESYSLOGIC_GL9763E; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_ANAHERA4ES: selects the visible DRIVERS_GENESYSLOGIC_GL9750; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_ANAHERA4ES: selects the visible DRIVERS_GENESYSLOGIC_GL9763E; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_BASEBOARD_DRALLION: selects the visible SMBIOS_SERIAL_FROM_VPD; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_BASEBOARD_GUYBRUSH: selects the visible DEBUG_SMI; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_BASEBOARD_GUYBRUSH: selects the visible ELOG; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_BASEBOARD_SARIEN: selects the visible SMBIOS_SERIAL_FROM_VPD; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_BASEBOARD_VOLTEER: selects the visible DRIVERS_GENESYSLOGIC_GL9763E; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_BRASK: selects the visible DRIVERS_GENESYSLOGIC_GL9755; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_BRYA0: selects the visible DRIVERS_GENESYSLOGIC_GL9755; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_CRAASK: selects the visible DRIVERS_GENESYSLOGIC_GL9750; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_CROTA: selects the visible DRIVERS_GENESYSLOGIC_GL9750; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_DELBIN: selects the visible DRIVERS_GENESYSLOGIC_GL9755; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_DROBIT: selects the visible DRIVERS_GENESYSLOGIC_GL9755; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_EPIC: selects the visible DRIVERS_GENESYSLOGIC_GL9750; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_FATCAT_COMMON: selects the visible GENERATE_SMBIOS_TABLES; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_FELWINTER: selects the visible DRIVERS_GENESYSLOGIC_GL9755; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_FROSTFLOW: selects the visible DRIVERS_GENESYSLOGIC_GL9755; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_GIMBLE: selects the visible DRIVERS_GENESYSLOGIC_GL9750; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_GIMBLE4ES: selects the visible DRIVERS_GENESYSLOGIC_GL9750; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_GLADIOS: selects the visible DRIVERS_GENESYSLOGIC_GL9750; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_GLADIOS: selects the visible DRIVERS_GENESYSLOGIC_GL9763E; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_GLASSWAY: selects the visible DRIVERS_GENESYSLOGIC_GL9750; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_GOTHRAX: selects the visible DRIVERS_GENESYSLOGIC_GL9750; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_GUREN: selects the visible DRIVERS_GENESYSLOGIC_GL9750; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_HADES: selects the visible DRIVERS_GENESYSLOGIC_GL9755; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_JOXER: selects the visible DRIVERS_GENESYSLOGIC_GL9750; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_KULDAX: selects the visible DRIVERS_GENESYSLOGIC_GL9755; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_KULNEX: selects the visible DRIVERS_GENESYSLOGIC_GL9755; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_LISBON: selects the visible DRIVERS_GENESYSLOGIC_GL9750; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_LISBON: selects the visible DRIVERS_GENESYSLOGIC_GL9763E; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_MITHRAX: selects the visible DRIVERS_GENESYSLOGIC_GL9755; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_MODEL_REX: selects the visible DRIVERS_GENESYSLOGIC_GL9755; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_MODEL_REX: selects the visible DRIVERS_NXP_UWB_SR1XX; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_MODEL_SCREEBO: selects the visible DRIVERS_GENESYSLOGIC_GL9750; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_MOXIE: selects the visible DRIVERS_GENESYSLOGIC_GL9755; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_MOXOE: selects the visible DRIVERS_GENESYSLOGIC_GL9755; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_NIVVIKS: selects the visible DRIVERS_GENESYSLOGIC_GL9750; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_OCELOT_COMMON: selects the visible GENERATE_SMBIOS_TABLES; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_PRIMUS: selects the visible DRIVERS_GENESYSLOGIC_GL9755; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_PUJJO: selects the visible DRIVERS_GENESYSLOGIC_GL9750; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_QUANDISO: selects the visible DRIVERS_GENESYSLOGIC_GL9750; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_QUANDISO2: selects the visible DRIVERS_GENESYSLOGIC_GL9750; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_REDRIX: selects the visible DRIVERS_GENESYSLOGIC_GL9755; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_REDRIX4ES: selects the visible DRIVERS_GENESYSLOGIC_GL9755; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_SKOLAS: selects the visible DRIVERS_GENESYSLOGIC_GL9755; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_SKOLAS4ES: selects the visible DRIVERS_GENESYSLOGIC_GL9755; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_TAEKO: selects the visible DRIVERS_GENESYSLOGIC_GL9750; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_TAEKO: selects the visible DRIVERS_GENESYSLOGIC_GL9763E; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_TAEKO: selects the visible DRIVERS_GENESYSLOGIC_GL9763E_L1_MAX; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_TAEKO4ES: selects the visible DRIVERS_GENESYSLOGIC_GL9750; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_TAEKO4ES: selects the visible DRIVERS_GENESYSLOGIC_GL9763E; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_TANIKS: selects the visible DRIVERS_GENESYSLOGIC_GL9750; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_TANIKS: selects the visible DRIVERS_GENESYSLOGIC_GL9763E; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_TANIKS: selects the visible DRIVERS_GENESYSLOGIC_GL9763E_L1_MAX; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_TIVVIKS: selects the visible DRIVERS_GENESYSLOGIC_GL9750; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_VOLTEER2: selects the visible DRIVERS_GENESYSLOGIC_GL9755; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_VOLTEER2_TI50: selects the visible DRIVERS_GENESYSLOGIC_GL9755; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_XIVU: selects the visible DRIVERS_GENESYSLOGIC_GL9750; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_YAVIKS: selects the visible DRIVERS_GENESYSLOGIC_GL9750; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_GOOGLE_YAVIKS: selects the visible DRIVERS_MTK_WIFI; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_INTEL_ADLRVP_N: selects the visible DRIVERS_UART_8250IO; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_INTEL_ADLRVP_P: selects the visible DRIVERS_UART_8250IO; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_INTEL_ADLRVP_RPL: selects the visible DRIVERS_UART_8250IO; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_INTEL_JASPERLAKE_RVP: selects the visible DRIVERS_UART_8250IO; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_INTEL_PTLRVP: selects the visible FW_CONFIG_SOURCE_CBFS; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_INTEL_PTLRVP4ES: selects the visible FW_CONFIG_SOURCE_CBFS; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_INTEL_PTLRVP_COMMON: selects the visible GENERATE_SMBIOS_TABLES; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_MSI_MS7D25: selects the visible DRIVERS_UART_8250IO; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_MSI_MS7E06: selects the visible DRIVERS_UART_8250IO; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_PRODRIVE_HERMES_BASEBOARD: selects the visible ONBOARD_VGA_IS_PRIMARY; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_PURISM_BASEBOARD_LIBREM_CNL: selects the visible DRIVERS_GENERIC_CBFS_SERIAL; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_PURISM_BASEBOARD_LIBREM_JSL: selects the visible DRIVERS_GENERIC_CBFS_SERIAL; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_PURISM_BASEBOARD_LIBREM_L1UM_V2: selects the visible DRIVERS_GENERIC_CBFS_SERIAL; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_PURISM_BASEBOARD_LIBREM_L1UM_V2: selects the visible DRIVERS_UART_8250IO; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_PURISM_BASEBOARD_LIBREM_L1UM_V2: selects the visible GENERATE_SMBIOS_TABLES; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_PURISM_BASEBOARD_LIBREM_SKL: selects the visible DRIVERS_GENERIC_CBFS_SERIAL; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_RAZER_BLADE_STEALTH_KBL: selects the visible DRIVERS_GENERIC_CBFS_SERIAL; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_SIEMENS_CHILI_BASE: selects the visible DRIVERS_UART_8250IO; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_SPECIFIC_OPTIONS: selects the visible DRIVERS_EFI_VARIABLE_STORE; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_SPECIFIC_OPTIONS: selects the visible DRIVERS_EMULATION_QEMU_FW_CFG; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_SPECIFIC_OPTIONS: selects the visible DRIVERS_GENERIC_CBFS_SERIAL; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_SPECIFIC_OPTIONS: selects the visible DRIVERS_GENERIC_CBFS_UUID; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_SPECIFIC_OPTIONS: selects the visible DRIVERS_OPTION_CFR; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_SPECIFIC_OPTIONS: selects the visible DRIVERS_UART_8250IO; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_SPECIFIC_OPTIONS: selects the visible ELOG; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_SPECIFIC_OPTIONS: selects the visible GENERATE_SMBIOS_TABLES; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_SPECIFIC_OPTIONS: selects the visible ONBOARD_VGA_IS_PRIMARY; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_SPECIFIC_OPTIONS: selects the visible TPM_MEASURED_BOOT; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_SPECIFIC_OPTIONS: selects the visible VPD; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_STARLABS_ADL_HORIZON: selects the visible TPM_MEASURED_BOOT; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_STARLABS_ADL_SERIES: selects the visible DRIVERS_EFI_VARIABLE_STORE; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_STARLABS_ADL_SERIES: selects the visible TPM2; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_STARLABS_ADL_SERIES: selects the visible VALIDATE_INTEL_DESCRIPTOR; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_STARLABS_LABTOP_CML: selects the visible TPM2; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_STARLABS_LABTOP_KBL: selects the visible TPM2; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_STARLABS_LITE_SERIES: selects the visible DRIVERS_EFI_VARIABLE_STORE; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_STARLABS_LITE_SERIES: selects the visible ONBOARD_VGA_IS_PRIMARY; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_STARLABS_LITE_SERIES: selects the visible TPM2; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_STARLABS_STARBOOK_ADL_COMMON: selects the visible TPM_MEASURED_BOOT; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_STARLABS_STARBOOK_MTL: selects the visible TPM_MEASURED_BOOT; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_STARLABS_STARBOOK_SERIES: selects the visible DRIVERS_EFI_VARIABLE_STORE; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_STARLABS_STARBOOK_SERIES: selects the visible VALIDATE_INTEL_DESCRIPTOR; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_STARLABS_STARBOOK_TGL: selects the visible TPM_MEASURED_BOOT; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_STARLABS_STARFIGHTER_SERIES: selects the visible DRIVERS_EFI_VARIABLE_STORE; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_STARLABS_STARFIGHTER_SERIES: selects the visible TPM_MEASURED_BOOT; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_STARLABS_STARFIGHTER_SERIES: selects the visible VALIDATE_INTEL_DESCRIPTOR; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_SUPERMICRO_BASEBOARD_X11_LGA1151_SERIES: selects the visible DRIVERS_UART_8250IO; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_SYSTEM76_ADL_COMMON: selects the visible DRIVERS_GENERIC_CBFS_SERIAL; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_SYSTEM76_ADL_COMMON: selects the visible DRIVERS_GENERIC_CBFS_UUID; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_SYSTEM76_MTL_COMMON: selects the visible DRIVERS_GENERIC_CBFS_SERIAL; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_SYSTEM76_MTL_COMMON: selects the visible DRIVERS_GENERIC_CBFS_UUID; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_SYSTEM76_RPL_COMMON: selects the visible DRIVERS_GENERIC_CBFS_SERIAL; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOARD_SYSTEM76_RPL_COMMON: selects the visible DRIVERS_GENERIC_CBFS_UUID; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config BOOTBLOCK_NORMAL: selects the visible SEPARATE_ROMSTAGE; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config CHROMEOS: selects the visible COLLECT_TIMESTAMPS; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config CHROMEOS: selects the visible ELOG; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config CHROMEOS: selects the visible VBOOT; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config CHROMEOS: selects the visible VPD; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config CHROMEOS_FW_SPLASH_SCREEN: selects the visible BMP_LOGO; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config CONSOLE_AMD_SIMNOW: selects the visible CONSOLE_POST; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config DEBUG_SOC_DRIVER: selects the visible DEBUG_RAM_SETUP; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config DEBUG_TPM: selects the visible DRIVER_TPM_DISPLAY_TIS_BYTES; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config DRIVERS_ASPEED_AST_COMMON: selects the visible SOFTWARE_I2C; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config DRIVERS_LENOVO_HYBRID_GRAPHICS: selects the visible ONBOARD_VGA_IS_PRIMARY; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config DRIVERS_OPTION_CFR: selects the visible DRIVERS_EFI_VARIABLE_STORE; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config DRIVERS_UART_OXPCIE: selects the visible EARLY_PCI_BRIDGE; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config EC_KONTRON_KEMPLD: selects the visible DRIVERS_UART_8250IO; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config EDK2_DEBUG: selects the visible CONSOLE_SERIAL; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config EDK2_SERIAL_SUPPORT: selects the visible CONSOLE_SERIAL; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config ENABLE_EC_UART1: selects the visible DRIVERS_UART_8250IO; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config ENABLE_HSUART: selects the visible CONSOLE_SERIAL; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config INTEL_CBNT_SUPPORT: selects the visible INTEL_TXT; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config LEGACY_UART: selects the visible DRIVERS_UART_8250IO; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config LEGACY_UART_MODE: selects the visible CONSOLE_SERIAL; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config LEGACY_UART_MODE: selects the visible DRIVERS_UART_8250IO; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config LINUXBOOT_ARM: selects the visible PAYLOAD_FIT_SUPPORT; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config LINUXBOOT_ARM64: selects the visible PAYLOAD_FIT_SUPPORT; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config LINUXBOOT_RISCV_RV32: selects the visible PAYLOAD_FIT_SUPPORT; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config LINUXBOOT_RISCV_RV64: selects the visible PAYLOAD_FIT_SUPPORT; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config NC_FPGA_POST_CODE: selects the visible EARLY_PCI_BRIDGE; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config PAYLOAD_FIT: selects the visible PAYLOAD_FIT_SUPPORT; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config PLATFORM_USES_FSP1_1: selects the visible INTEL_GMA_ADD_VBT; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config QC_BLOBS_UPSTREAM: selects the visible USE_QC_BLOBS; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config SOC_AMD_COMMON_BLOCK_SIMNOW_BUILD: selects the visible CONSOLE_AMD_SIMNOW; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config SOC_INTEL_ALDERLAKE: selects the visible INTEL_GMA_ADD_VBT; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config SOC_INTEL_APOLLOLAKE: selects the visible INTEL_GMA_ADD_VBT; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config SOC_INTEL_CANNONLAKE_BASE: selects the visible INTEL_GMA_ADD_VBT; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config SOC_INTEL_COMMON_SKYLAKE_BASE: selects the visible INTEL_GMA_ADD_VBT; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config SOC_INTEL_DENVERTON_NS: selects the visible DEBUG_GPIO; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config SOC_INTEL_ELKHARTLAKE: selects the visible INTEL_GMA_ADD_VBT; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config SOC_INTEL_JASPERLAKE: selects the visible INTEL_GMA_ADD_VBT; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config SOC_INTEL_METEORLAKE: selects the visible INTEL_GMA_ADD_VBT; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config SOC_INTEL_PANTHERLAKE_BASE: selects the visible INTEL_GMA_ADD_VBT; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config SOC_INTEL_TIGERLAKE: selects the visible INTEL_GMA_ADD_VBT; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config SOC_QUALCOMM_SC7180: selects the visible BOOTBLOCK_CONSOLE; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config VBOOT_CBFS_INTEGRATION: selects the visible INCLUDE_CONFIG_FILE; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config VBOOT_GSCVD: selects the visible CBFS_VERIFICATION; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config VBOOT_STARTS_IN_BOOTBLOCK: selects the visible SEPARATE_ROMSTAGE; consider using 'depends on' or 'imply' instead

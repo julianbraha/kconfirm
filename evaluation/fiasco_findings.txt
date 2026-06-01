@@ -1,0 +1,10 @@
+WARNING [constant_condition] config NO_IO_PAGEFAULT: constant default condition 'if IA32 || AMD64' for config option: NO_IO_PAGEFAULT, this condition is a dependency and will always be true
+WARNING [constant_condition] config SERIAL: constant default condition 'if HAS_SERIAL_OPTION' for config option: SERIAL, this condition is a dependency and will always be true
+WARNING [constant_condition] config WATCHDOG: constant default condition 'if HAS_WATCHDOG_OPTION' for config option: WATCHDOG, this condition is a dependency and will always be true
+WARNING [select_visible] config JDB: selects the visible INPUT; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config JDB: selects the visible RT_DBG; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config ONE_SHOT: selects the visible FINE_GRAINED_CPUTIME; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config PERFORMANCE: selects the visible INLINE; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config PERFORMANCE: selects the visible NDEBUG; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config PERFORMANCE: selects the visible NO_FRAME_PTR; consider using 'depends on' or 'imply' instead
+WARNING [select_visible] config UNIT_TEST: selects the visible TEST_SUPPORT_CODE; consider using 'depends on' or 'imply' instead
