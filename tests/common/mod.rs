@@ -10,7 +10,7 @@ pub fn run_cli_on_fixture(path: &std::path::Path, enable: &str, disable: &str) -
         .args(["run", "-p", "kconfirm-cli", "--quiet", "--"])
         .args(["--other-kconfig-path"])
         .arg(path)
-        .args(["--enable", enable, "--disable", disable])
+        .args(["--enable-check", enable, "--disable-check", disable])
         .output()
         .expect("failed to run cli");
 

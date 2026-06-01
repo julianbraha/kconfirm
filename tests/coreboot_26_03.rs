@@ -47,9 +47,9 @@ fn test_coreboot_kconfig_analysis_v24_12() {
         ])
         .arg(&extract_dir)
         .args([
-            "--disable",
+            "--disable-check",
             "all",
-            "--enable",
+            "--enable-check",
             "duplicate_default_value,ungrouped_attribute",
         ])
         .output()

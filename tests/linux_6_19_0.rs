@@ -48,9 +48,9 @@ fn test_linux_kconfig_analysis_v6_19() {
         .arg(&extract_dir)
         // explicitly enable style, keep dead_link disabled
         .args([
-            "--enable",
+            "--enable-check",
             "duplicate_default_value,ungrouped_attribute",
-            "--disable",
+            "--disable-check",
             "dead_link",
         ])
         .output()
