@@ -57,19 +57,19 @@ fn parse_args() -> Result<Args, String> {
 
     let long_options = [
         option {
-            name: b"linux-path\0".as_ptr() as *const c_char,
+            name: c"linux-path".as_ptr() as *const c_char,
             has_arg: REQUIRED_ARGUMENT,
             flag: ptr::null_mut(),
             val: 'l' as i32,
         },
         option {
-            name: b"enable\0".as_ptr() as *const c_char,
+            name: c"enable".as_ptr() as *const c_char,
             has_arg: REQUIRED_ARGUMENT,
             flag: ptr::null_mut(),
             val: 'e' as i32,
         },
         option {
-            name: b"disable\0".as_ptr() as *const c_char,
+            name: c"disable".as_ptr() as *const c_char,
             has_arg: REQUIRED_ARGUMENT,
             flag: ptr::null_mut(),
             val: 'd' as i32,
@@ -90,7 +90,7 @@ fn parse_args() -> Result<Args, String> {
             let c = getopt_long(
                 argc,
                 argv.as_mut_ptr(),
-                b"l:e:d:\0".as_ptr() as *const c_char,
+                c"l:e:d:".as_ptr() as *const c_char,
                 long_options.as_ptr(),
                 ptr::null_mut(),
             );
