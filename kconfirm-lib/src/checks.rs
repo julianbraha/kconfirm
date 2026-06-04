@@ -1,16 +1,25 @@
 // SPDX-License-Identifier: GPL-2.0-only
+use crate::{
+    output::{
+        Finding,
+        Severity, //
+    },
+    symbol_table::{
+        AttributeDef,
+        TypeInfo, //
+    },
+};
 use log::error;
-use nom_kconfig::attribute::AndExpression;
-use nom_kconfig::attribute::Expression;
-use nom_kconfig::attribute::Term;
-use nom_kconfig::attribute::range::RangeBound;
-use std::collections::HashSet;
-use std::num::ParseIntError;
-
-use crate::output::Finding;
-use crate::output::Severity;
-use crate::symbol_table::AttributeDef;
-use crate::symbol_table::TypeInfo;
+use nom_kconfig::attribute::{
+    AndExpression,
+    Expression,
+    Term,
+    attribute::range::RangeBound, //
+};
+use std::{
+    collections::HashSet,
+    num::ParseIntError, //
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Check {

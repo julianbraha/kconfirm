@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
-
 use curl::easy::Easy;
 use regex::Regex;
-use std::sync::OnceLock;
-use std::time::Duration;
+use std::{
+    sync::OnceLock,
+    time::Duration, //
+};
 
 /*
  * during testing, "Unreachable" and "ServerError" seem to be a 50/50

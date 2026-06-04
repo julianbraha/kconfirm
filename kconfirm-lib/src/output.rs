@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
-use std::fmt;
-
 use crate::Check;
+use std::fmt;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Severity {

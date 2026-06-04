@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: GPL-2.0-only
 use log::debug;
-use nom_kconfig::attribute::DefaultAttribute;
-use nom_kconfig::attribute::Expression;
-use nom_kconfig::attribute::OrExpression;
-use nom_kconfig::attribute::Range;
-use nom_kconfig::attribute::r#type::Type;
-use std::collections::HashMap;
-use std::collections::hash_map;
+use nom_kconfig::attribute::{
+    DefaultAttribute,
+    Expression,
+    OrExpression,
+    Range,
+    r#type::Type, //
+};
+use std::collections::{
+    HashMap,
+    hash_map, //
+};
 
 type KconfigSymbol = String;
 type Arch = Option<String>;

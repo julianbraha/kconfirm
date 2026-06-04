@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 use log::warn;
-use std::io;
-use std::path::PathBuf;
-
 use nom_kconfig::KconfigFile;
+use std::{
+    io,
+    std::path::PathBuf, //
+};
 
 // each architecture has its own directory, and config option.
 // most are the same, but powerpc / ppc and um / uml are not.

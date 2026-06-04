@@ -1,24 +1,28 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
+use kconfirm_lib::{
+    AnalysisArgs,
+    Check,
+    check_kconfig,
+    output::print_findings,
+    parse_check, //
+};
+use kconfirm_linux::collect_kconfig_root_files;
 use libc::c_char;
 use libc::getopt_long;
 use libc::option;
+use nom_kconfig::KconfigInput;
 use std::collections::HashSet;
 use std::env;
-use std::ffi::CStr;
-use std::ffi::CString;
-use std::io;
-use std::path::PathBuf;
-use std::ptr;
-
-use nom_kconfig::KconfigInput;
-
-use kconfirm_lib::AnalysisArgs;
-use kconfirm_lib::Check;
-use kconfirm_lib::check_kconfig;
-use kconfirm_lib::output::print_findings;
-use kconfirm_lib::parse_check;
-use kconfirm_linux::collect_kconfig_root_files;
+use std::ffi::{
+    CStr,
+    CString, //
+};
+use std::{
+    io,
+    path::PathBuf,
+    ptr, //
+};
 
 const NO_ARGUMENT: i32 = 0;
 const REQUIRED_ARGUMENT: i32 = 1;

@@ -1,31 +1,46 @@
 // SPDX-License-Identifier: GPL-2.0-only
-use crate::AnalysisArgs;
-use crate::Check;
-use crate::SymbolTable;
-use crate::dead_links::LinkStatus;
-use crate::dead_links::check_link;
-use crate::dead_links::{self};
-use crate::output::Finding;
-use crate::output::Severity;
-use crate::symbol_table::ChoiceData;
-
-use log::debug;
-use log::error;
-use log::warn;
-use nom_kconfig::Attribute::*;
-use nom_kconfig::Entry;
-use nom_kconfig::attribute::DefaultAttribute;
-use nom_kconfig::attribute::Expression;
-use nom_kconfig::attribute::Imply;
-use nom_kconfig::attribute::Select;
-use nom_kconfig::attribute::r#type::Type;
-use nom_kconfig::entry::Choice;
-use nom_kconfig::entry::Config;
-use nom_kconfig::entry::If;
-use nom_kconfig::entry::Menu;
-use nom_kconfig::entry::Source;
-use std::collections::HashSet;
-use std::option::Option;
+use crate::{
+    AnalysisArgs,
+    Check,
+    SymbolTable,
+    dead_links::{
+        self,
+        LinkStatus,
+        check_link, //
+    },
+    output::{
+        Finding,
+        Severity, //
+    },
+    symbol_table::ChoiceData, //
+};
+use log::{
+    debug,
+    error,
+    warn, //
+};
+use nom_kconfig::{
+    Attribute::*,
+    Entry,
+    attribute::{
+        DefaultAttribute,
+        Expression,
+        Imply,
+        Select,
+        r#type::Type, //
+    },
+    entry::{
+        Choice,
+        Config,
+        If,
+        Menu,
+        Source, //
+    },
+};
+use std::{
+    collections::HashSet,
+    option::Option, //
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum FunctionalAttributes {
