@@ -25,6 +25,23 @@ pub use checks::{
 mod analyze;
 use analyze::analyze;
 
+/// Runs the specified checks on raw Kconfig files.
+/// In the case of Linux, architectures can be specified in the
+/// `kconfig_files` argument.
+///
+/// # Examples
+///
+/// ## Analyze Linux (x86 architecture)
+/// ```
+/// let mut my_checks = AnalysisArgs::new();
+/// my_checks.enable_check(Check::SelectVisible);
+/// let root_kconfig_path = PathBuf::from("Kconfig");
+/// let root_kconfig_file = KconfigFile::new(linux_source_dir, root_kconfig_path);
+/// let kconfig_input = KconfigInput::new_extra(&root_kconfig_file.read_to_string()?, root_kconfig_file);
+/// let x86_arch = String::from(X86);
+/// let kconfig_files = vec![Some(x86_arch), kconfig_input];
+/// let findings = check_kconfig(my_checks, root_kconfig_file);
+/// ```
 pub fn check_kconfig(
     args: AnalysisArgs,
     kconfig_files: Vec<(Option<String>, KconfigInput)>,
