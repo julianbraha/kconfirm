@@ -89,11 +89,25 @@ pub fn parse_check(name: &str) -> Option<Check> {
 
 #[derive(Clone, Debug)]
 pub struct AnalysisArgs {
-    // check for duplicate default values
     pub enabled_checks: HashSet<Check>,
 }
 
 impl AnalysisArgs {
+    pub fn new() -> AnalysisArgs {
+        let no_checks = HashSet::new();
+        AnalysisArgs {
+            enabled_checks: no_checks,
+        }
+    }
+
+    pub fn enable_check(&mut self, check: Check) -> bool {
+        return self.enabled_checks.insert(check);
+    }
+
+    pub fn disable_check(&mut self, check: Check) -> bool {
+        return self.enabled_checks.remove(&check);
+    }
+
     pub fn is_enabled(&self, check: Check) -> bool {
         self.enabled_checks.contains(&check)
     }
