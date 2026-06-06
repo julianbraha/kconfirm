@@ -3,7 +3,7 @@ use log::warn;
 use nom_kconfig::KconfigFile;
 use std::{
     io,
-    std::path::PathBuf, //
+    path::PathBuf, //
 };
 
 // each architecture has its own directory, and config option.

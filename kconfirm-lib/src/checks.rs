@@ -14,7 +14,7 @@ use nom_kconfig::attribute::{
     AndExpression,
     Expression,
     Term,
-    attribute::range::RangeBound, //
+    range::RangeBound, //
 };
 use std::{
     collections::HashSet,
