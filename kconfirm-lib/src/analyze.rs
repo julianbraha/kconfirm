@@ -224,6 +224,29 @@ fn recurse_entries(
     }
 }
 
+/// Traverses `nom-kconfig` AST entries to construct the symbol table, and run checks on config
+/// option definitions.
+///
+/// This function recursively processes [`Entry`] elements under a specific
+/// architecture context provided by the `arch` argument. It evaluates using the checks passed in
+/// the `args`, and builds up the symbol table [`SymbolTable`].
+///
+/// Findings from the checks are gathered and returned as an array of [`Finding`].
+///
+/// # Examples
+///
+/// ```ignore
+/// use crate::analyze::analyze;
+/// use crate::symbol_table::SymbolTable;
+/// use crate::checks::AnalysisArgs;
+///
+/// let args = AnalysisArgs::new();
+/// let mut symtab = SymbolTable::new();
+/// let entries = vec![]; // Populated from a nom-kconfig parser pass
+///
+/// let findings = analyze(&args, &mut symtab, Some("x86".to_string()), entries);
+/// println!("Analysis on config option definitions complete. Total warnings: {}", findings.len());
+/// ```
 pub fn analyze(
     args: &AnalysisArgs,
     symtab: &mut SymbolTable,

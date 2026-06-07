@@ -55,6 +55,41 @@ impl fmt::Display for Finding {
     }
 }
 
+/// Sorts, aggregates, and prints check findings to stdout.
+///
+/// Aggregation is performed using severity, check type, symbol, and diagnostic message.
+///
+/// For Linux, if multiple findings are identical but occur across different target
+/// architectures (the `arch` field), they are collapsed into a single printed output line with
+/// the corresponding architectures grouped within brackets (e.g., `[x86, arm64]`).
+///
+/// # Examples
+///
+/// ```ignore
+/// use crate::checks::Check;
+/// use crate::output::{print_findings, Finding, Severity};
+///
+/// let findings = vec![
+///     Finding {
+///         severity: Severity::Warning,
+///         check: Check::ReverseRange,
+///         symbol: Some("CONFIG_EXAMPLE".to_string()),
+///         message: "reverse range, no value is valid".to_string(),
+///         arch: Some("x86".to_string()),
+///     },
+///     Finding {
+///         severity: Severity::Warning,
+///         check: Check::ReverseRange,
+///         symbol: Some("CONFIG_EXAMPLE".to_string()),
+///         message: "reverse range, no value is valid".to_string(),
+///         arch: Some("arm64".to_string()),
+///     },
+/// ];
+///
+/// // Prints:
+/// // WARNING [reverse_range] [x86, arm64] config CONFIG_EXAMPLE: reverse range, no value is valid
+/// print_findings(findings);
+/// ```
 pub fn print_findings(mut findings: Vec<Finding>) {
     findings.sort_by(|a, b| {
         (

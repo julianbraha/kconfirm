@@ -66,6 +66,20 @@ impl Check {
     }
 }
 
+/// Parses the string ID of a check into its corresponding [`Check`] variant.
+///
+/// Returns `Some(Check)` if a matching variant is found, or `None` if the identifier
+/// is unrecognized.
+///
+/// # Examples
+///
+/// ```
+/// use crate::checks::{parse_check, Check};
+///
+/// assert_eq!(parse_check("failed_parse"), Some(Check::FailedParse));
+/// assert_eq!(parse_check("reverse_range"), Some(Check::ReverseRange));
+/// assert_eq!(parse_check("invalid_lint_name"), None);
+/// ```
 pub fn parse_check(name: &str) -> Option<Check> {
     match name {
         "failed_parse" => Some(Check::FailedParse),

@@ -11,15 +11,21 @@ use nom_kconfig::{
     parse_kconfig, //
 };
 
-use analyze::analyze;
+pub use analyze::analyze;
 pub use checks::{
     AnalysisArgs,
     Check,
-    check_select_visible,
-    check_variable_info,
     parse_check, //
 };
-pub use output::*;
+use checks::{
+    check_select_visible,
+    check_variable_info, //
+};
+pub use output::{
+    Finding,
+    Severity,
+    print_findings, //
+};
 pub use symbol_table::*;
 
 /// Runs the specified checks on raw Kconfig files.
