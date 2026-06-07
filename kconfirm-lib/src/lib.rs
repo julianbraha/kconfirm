@@ -1,19 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0-only
+mod analyze;
+mod checks;
+mod dead_links;
+mod output;
+mod symbol_table;
+
 use nom_kconfig::{
     Entry,
     KconfigInput,
     parse_kconfig, //
 };
 
-pub mod output;
-use output::*;
-
-pub mod symbol_table;
-use symbol_table::*;
-
-mod dead_links;
-
-mod checks;
+use analyze::analyze;
 pub use checks::{
     AnalysisArgs,
     Check,
@@ -21,9 +19,8 @@ pub use checks::{
     check_variable_info,
     parse_check, //
 };
-
-mod analyze;
-use analyze::analyze;
+pub use output::*;
+pub use symbol_table::*;
 
 /// Runs the specified checks on raw Kconfig files.
 /// In the case of Linux, architectures can be specified in the
