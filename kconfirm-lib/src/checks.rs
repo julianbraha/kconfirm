@@ -21,29 +21,68 @@ use std::{
     num::ParseIntError, //
 };
 
+/// The various kinds of supported checks for user selection.
+///
+/// Each enum variant represents a specific rule. These variants are tracked by [`Finding`]
+/// structures and can be selectively filtered using [`AnalysisArgs`].
+///
+/// # Examples
+///
+/// ```
+/// use crate::checks::Check;
+///
+/// let rule = Check::ReverseRange;
+/// assert_eq!(rule.as_str(), "reverse_range");
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Check {
+    /// `nom-kconfig` failed to parse the Kconfig.
     FailedParse,
-    UngroupedAttribute, // check for duplicate default values, and ungrouped attributes
-    DeadLink,           // check for dead links in the help texts
+    /// Style: attributes aren't grouped by type.
+    UngroupedAttribute,
+    /// Dead link found in `help` attribute text.
+    DeadLink,
+    /// Misuse of the `select` attribute: selects a visible config option.
     SelectVisible,
-    // need SMT solving before we can detect select-undefineds
-    //SelectUndefined,
+    /// Duplicate dependency on the same config option. Redundant.
     DuplicateDependency,
+    /// Duplicate `range` attribute for the same config option. Redundant.
     DuplicateRange,
+    /// Unreachable but not duplicate `range` attribute. May cause misconfiguration.
     DeadRange,
+    /// Duplicate `select` attribute for the same config option. Redundant.
     DuplicateSelect,
+    /// Unreachable but not duplicate `select` attribute. May cause misconfiguration.
     DeadSelect,
-    DeadDefault,
-    ConstantCondition,
+    /// Duplicate `default` attribute for the same config option. Redundant.
     DuplicateDefault,
+    /// Unreachable but not duplicate `default` attribute. May cause misconfiguration.
+    DeadDefault,
+    /// Style: multiple `default` attributes have the same value, but different conditions.
+    /// May be combined into a single `default` attribute.
     DuplicateDefaultValue,
+    /// `if` condition that is effectively constant. May cause dead code.
+    ConstantCondition,
+    /// Duplicate `imply` attribute for the same config option. Redundant.
     DuplicateImply,
+    /// Unreachable but not duplicate `imply` attribute. May cause misconfiguration.
     DeadImply,
+    /// A `range` attribute with a lower bound that is greater than the upper bound.
+    /// There is no valid value for these ranges.
     ReverseRange,
 }
 
 impl Check {
+    /// Returns the string ID of the corresponding [`Check`] variant.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use crate::checks::Check;
+    ///
+    /// assert_eq!(Check::DeadLink.as_str(), "dead_link");
+    /// assert_eq!(Check::DuplicateRange.as_str(), "duplicate_range");
+    /// ```
     pub fn as_str(self) -> &'static str {
         match self {
             Check::FailedParse => "failed_parse",
@@ -101,9 +140,25 @@ pub fn parse_check(name: &str) -> Option<Check> {
     }
 }
 
+/// The set of enabled checks to run analysis with.
+///
+/// Checks can be toggled using `[enable_check]` and `[disable_check]`.
+///
+/// # Examples
+///
+/// ```ignore
+/// use crate::checks::{AnalysisArgs, Check};
+///
+/// let mut args = AnalysisArgs::new();
+/// args.enable_check(Check::ReverseRange);
+///
+/// assert!(args.is_enabled(Check::ReverseRange));
+/// assert!(!args.is_enabled(Check::DeadLink));
+/// ```
 #[derive(Clone, Debug)]
 pub struct AnalysisArgs {
-    pub enabled_checks: HashSet<Check>,
+    /// The set of checks to use during analysis.
+    enabled_checks: HashSet<Check>,
 }
 
 impl AnalysisArgs {

@@ -2,20 +2,68 @@
 use crate::Check;
 use std::fmt;
 
+/// The level of severity of a [`Finding`].
+///
+/// Allows utilities like [`print_findings`] to sort issues by priority.
+///
+/// # Examples
+///
+/// ```ignore
+/// use crate::output::Severity;
+///
+/// // Ordering enables sorting alerts from most critical to stylistic.
+/// assert!(Severity::Fatal > Severity::Error);
+/// assert!(Severity::Warning > Severity::Style);
+/// ```
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Severity {
-    Fatal,
-    Error, // will be used for known bugs, e.g. unmet dependencies
-    Warning,
-    Style,
+    /// Opinionated style issues. Disabled by default.
+    Style = 0,
+    /// Issues that do not cause build failures, but are still unwanted.
+    Warning = 1,
+    /// Hard errors, such as unmet dependency bugs or cyclical dependencies.
+    /// Currently unused.
+    Error = 2,
+    /// A critical error in the Kconfig, such as a parse failure.
+    /// May prevent checks from running on the rest of the Kconfig.
+    Fatal = 3,
 }
 
+/// An individual finding produced by a [`Check`] during analysis.
+///
+/// A `Finding` includes all of the context required to identify and categorize an instance of
+/// Kconfig misuse. Individual findings are collected into a list during analysis and passed to
+/// [`print_findings`] for aggregation and display.
+///
+/// # Examples
+///
+/// ```ignore
+/// use crate::checks::Check;
+/// use crate::output::{Finding, Severity};
+///
+/// let alert = Finding {
+///     severity: Severity::Warning,
+///     check: Check::DeadLink,
+///     symbol: Some("CONFIG_STAGING".to_string()),
+///     message: "help text contains link to dead website".to_string(),
+///     arch: Some("x86".to_string()),
+/// };
+///
+/// // Custom `Display` formatting turns this into a scannable terminal line.
+/// println!("{}", alert);
+/// ```
 #[derive(Debug)]
 pub struct Finding {
+    /// The impact level of the finding.
     pub severity: Severity,
+    /// The specific check that produced the finding.
     pub check: Check,
+    /// The `config` option whose definition contains the detected misuse.
     pub symbol: Option<String>,
+    /// A human-readable diagnostic message, intended for use when displaying the finding to the user.
     pub message: String,
+    /// The architecture affected by the finding. `None` represents a finding that affects all
+    /// architectures (not arch-specific).
     pub arch: Option<String>,
 }
 

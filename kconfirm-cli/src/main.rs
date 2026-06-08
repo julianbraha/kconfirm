@@ -52,7 +52,7 @@ struct Args {
 fn main() -> io::Result<()> {
     env_logger::init();
     let cli_args = Args::parse();
-    let mut enabled_checks: HashSet<Check> = [
+    let default_checks: HashSet<Check> = [
         Check::SelectVisible,
         // need SMT solving before we can detect select-undefineds
         //Check::SelectUndefined,
@@ -69,21 +69,25 @@ fn main() -> io::Result<()> {
     .into_iter()
     .collect();
 
+    let mut analysis_args = AnalysisArgs::new();
+
+    for check in default_checks {
+        analysis_args.enable_check(check);
+    }
+
     // apply --enable
     for name in &cli_args.enable_check {
         if let Some(c) = parse_check(name) {
-            enabled_checks.insert(c);
+            analysis_args.enable_check(c);
         }
     }
 
     // apply --disable
     for name in &cli_args.disable_check {
         if let Some(c) = parse_check(name) {
-            enabled_checks.remove(&c);
+            analysis_args.disable_check(c);
         }
     }
-
-    let analysis_args = AnalysisArgs { enabled_checks };
 
     let findings: Vec<Finding>;
     match (

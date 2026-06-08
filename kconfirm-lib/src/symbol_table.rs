@@ -16,33 +16,70 @@ type KconfigSymbol = String;
 type Arch = Option<String>;
 type Cond = Option<Expression>;
 
-// NOTE: we cannot add these elements to the solver until we've processed all variables,
-// because we need to know all of the selectors.
+/// All of the type info of a Kconfig symbol. Since `config` options can have their attributes
+/// spread out across multiple definitions, and can also be redefined in each architecture, the
+/// Vectors are used for appending more information, and the architecture is tracked in each field.
+///
+/// # Examples
+///
+/// ```ignore
+/// use crate::symbol_table::TypeInfo;
+///
+/// // TypeInfo structs are dynamically populated via parsing or structural resolution passes.
+/// let metadata = TypeInfo::new_empty();
+/// assert!(metadata.kconfig_type.is_none());
+/// ```
 #[derive(Debug, Clone)]
 pub struct TypeInfo {
-    pub kconfig_type: Option<Type>, // 'None' when we don't know the type (e.g. if it's a dangling reference)
+    /// The Kconfig type, such as bool or tristate.
+    /// `None` is used when the type is unknown
+    /// (e.g. dangling references, or for symbols without types).
+    pub kconfig_type: Option<Type>,
 
-    // maps the selector to an (ARCH, select_cond)
-    // - if the ARCH is None, then it's not arch-specific
-    // if the select_cond is None, then it's unconditional
-    pub selected_by: HashMap<KconfigSymbol, Vec<(Arch, Cond)>>, // .0 only selects it when .1 is true.
+    /// Maps the selector of this symbol to the architecture and the `select` condition.
+    /// If the architecture is `None`, then it's not arch-specific.
+    /// If the condition is `None`, then the `select` is unconditional.
+    pub selected_by: HashMap<KconfigSymbol, Vec<(Arch, Cond)>>,
 
-    // there is one of these per entry (each entry expected to have a different definedness condition)
-    // maps architecture option name (or none if not arch-specific) to:
-    // [([condition], config definition)]
-    // - NOTE: there can be multiple partial definitions under the same condition, or mutually-exclusive conditions, or a subset condition.
-    pub attribute_defs: HashMap<Arch, Vec<(Vec<Expression>, AttributeDef)>>, // the innermost `Vec<Expression>` represents each nested condition that was reached (we will eventually need to AND them all)
+    /// Maps the architecture to the various partial definitions of the `config` option with their
+    /// condition expressions.
+    pub attribute_defs: HashMap<Arch, Vec<(Vec<Expression>, AttributeDef)>>,
 }
 
-// everything is a vector because we may encounter multiple over time,
-//   so we won't know until the end what the condition is.
+/// Keeps track of the attributes of a `config` option. Each option may have multiple, partial
+/// definitions spread out throughout Kconfig, and need to be merged, so each field of this struct
+/// uses a Vector for appending.
+///
+/// # Examples
+///
+/// ```ignore
+/// use crate::symbol_table::AttributeDef;
+///
+/// // Initialized dynamically as attributes are parsed from the AST tree
+/// let attributes = AttributeDef {
+///     kconfig_dependencies: vec![],
+///     kconfig_ranges: vec![],
+///     kconfig_defaults: vec![],
+///     visibility: vec![],
+///     selects: vec![],
+///     implies: vec![],
+/// };
+/// ```
 #[derive(Debug, Clone)]
 pub struct AttributeDef {
+    /// The dependencies of the `config` option. Need to be logically AND'd to get the entire
+    /// condition.
     pub kconfig_dependencies: Vec<OrExpression>,
+    /// The `range` attributes of the `config` option. Only used for the `int` and `hex` types.
     pub kconfig_ranges: Vec<Range>,
+    /// The `default` attributes of the `config` option. Order is preserved from the source.
     pub kconfig_defaults: Vec<DefaultAttribute>,
+    /// The visibility condition of the `config` option. Need to be logically AND'd to get the
+    /// entire condition.
     pub visibility: Vec<Option<OrExpression>>,
+    /// The `select` attributes of the `config` option. Represents reverse dependencies in Kconfig.
     pub selects: Vec<(KconfigSymbol, Cond)>,
+    /// The `imply` attributes of the `config` option.
     pub implies: Vec<(KconfigSymbol, Cond)>,
 }
 
@@ -117,21 +154,56 @@ impl TypeInfo {
     }
 }
 
-// the visibility and the dependencies will each need to be AND'd (separately)
-// the defaults should each be handled separately.
+/// The information about a Kconfig `choice`. Not a `config` option but still has attributes that
+/// are effectively passed-down to its contained `config` options. Also has its own defaults, which
+/// determine the contained config option that is automatically enabled.
+///
+/// # Examples
+///
+/// ```ignore
+/// use crate::symbol_table::ChoiceData;
+///
+/// // Choice data entities are initialized dynamically during AST traversal phases.
+/// let choice_block = ChoiceData {
+///     arch: Some("arm64".to_string()),
+///     visibility: None,
+///     dependencies: vec![],
+///     defaults: vec![],
+/// };
+/// ```
 pub struct ChoiceData {
-    //pub inner_vars: Vec<String>,
+    /// The architecture that the `choice` appears in.
     pub arch: Arch,
+    /// The visibility condition of the `choice`.
     pub visibility: Cond,
-    pub dependencies: Vec<OrExpression>, // this is the menu's dependencies (and inherited dependencies from the file)
-    pub defaults: Vec<DefaultAttribute>, // these are each of the conditional defaults for the choice
+    /// The list of dependencies for the `choice`. In Kconfig semantics, contained `config` options
+    /// inherit these dependencies.
+    pub dependencies: Vec<OrExpression>,
+    /// The list of defaults for the `choice`. In Kconfig semantics, these determine which `config`
+    /// option is automatically set.
+    pub defaults: Vec<DefaultAttribute>,
 }
 
-// NOTE: it might be better if TypeInfo is an enum with a single value,
-//       e.g. Unsolved(kconfig_raw) and Solved(z3_ast)
+/// The analyzed type information for each `config` option. Also keeps track of the special
+/// `modules` option, which determines if tristate `config` options can be set to `'m'`. `choice`s
+/// are also stored here, despite not technically being `config` options. Backed by a hashmap.
+///
+/// # Examples
+///
+/// ```ignore
+/// use crate::symbol_table::SymbolTable;
+///
+/// let mut symtab = SymbolTable::new();
+/// assert!(symtab.raw.is_empty());
+/// assert!(symtab.modules_option.is_none());
+/// ```
 pub struct SymbolTable {
+    /// The underlying hashmap that stores the configuration options and their associated type
+    /// information.
     pub raw: HashMap<KconfigSymbol, TypeInfo>,
+    /// All of the `choice` entries with their information in the analyzed Kconfig.
     pub choices: Vec<ChoiceData>,
+    /// The special-purpose `config` option with the `modules` attribute.
     pub modules_option: Option<KconfigSymbol>, // None until we find the modules attribute in exactly 1 config option
 }
 
@@ -156,6 +228,9 @@ impl SymbolTable {
         }
     }
 
+    /// Merges a `config` option's partial definition into the symbol table.
+    /// If this is the first time this method has been called for this `config` option, then a new
+    /// entry into the symbol table is created.
     pub fn merge_insert_new_solved(
         &mut self,
         var: KconfigSymbol,
@@ -210,6 +285,8 @@ impl SymbolTable {
     }
 }
 
+/// Adds the selector `config` symbol to the `selected_by` list for this `config` option into the
+/// symbol table.
 fn merge_selected_by(
     map: &mut HashMap<String, Vec<(Arch, Cond)>>,
     arch: Arch,
@@ -220,6 +297,7 @@ fn merge_selected_by(
         .push((arch, selected_by.1));
 }
 
+/// Inserts the type information into the symbol table.
 fn insert_variable_info(
     map: &mut HashMap<Arch, Vec<(Vec<Expression>, AttributeDef)>>,
     arch: Arch,

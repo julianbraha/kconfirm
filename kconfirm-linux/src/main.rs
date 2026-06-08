@@ -4,8 +4,8 @@ use kconfirm_lib::{
     AnalysisArgs,
     Check,
     check_kconfig,
-    output::print_findings,
     parse_check, //
+    print_findings,
 };
 use kconfirm_linux::collect_kconfig_root_files;
 use libc::c_char;
@@ -153,7 +153,7 @@ fn main() -> io::Result<()> {
         std::process::exit(1);
     });
 
-    let mut enabled_checks: HashSet<Check> = [
+    let default_checks: HashSet<Check> = [
         // need SMT solving before we can detect select-undefineds
         // Check::SelectUndefined,
         Check::DuplicateDependency,
@@ -169,21 +169,25 @@ fn main() -> io::Result<()> {
     .into_iter()
     .collect();
 
+    let mut analysis_args = AnalysisArgs::new();
+
+    for check in default_checks {
+        analysis_args.enable_check(check);
+    }
+
     // apply --enable
     for name in &cli_args.enable {
         if let Some(c) = parse_check(name) {
-            enabled_checks.insert(c);
+            analysis_args.enable_check(c);
         }
     }
 
     // apply --disable
     for name in &cli_args.disable {
         if let Some(c) = parse_check(name) {
-            enabled_checks.remove(&c);
+            analysis_args.disable_check(c);
         }
     }
-
-    let analysis_args = AnalysisArgs { enabled_checks };
 
     let kconfig_files = collect_kconfig_root_files(cli_args.linux_path)?;
 
