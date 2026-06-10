@@ -5,7 +5,7 @@ use nom_kconfig::{
         DefaultAttribute,
         r#type::{
             ConfigType,
-            Type::{self, DefBool, DefTristate},
+            Type::{self, Bool, DefBool, DefTristate, Hex, Int, String, Tristate},
         },
     },
     entry::Config, //
@@ -66,11 +66,14 @@ pub fn visit_config(config: Config) -> Config {
                     transformed_attributes.push(type_definition);
                     transformed_attributes.push(default);
                 }
-                _ => {
-                    // identity transformation
+                Bool(t) | Tristate(t) | Int(t) | Hex(t) | String(t) => {
+                    // prompts should have been expanded in a previous pass
+                    assert!(t.is_none());
+                    // identity
                     transformed_attributes.push(attribute);
                 } // TODO: if linux adds def_string, def_int, def_hex
             },
+
             _ => transformed_attributes.push(attribute),
         }
     }
