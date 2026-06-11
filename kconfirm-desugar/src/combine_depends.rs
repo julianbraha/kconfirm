@@ -19,6 +19,9 @@ pub fn visit_entry(entry: Entry) -> Vec<Entry> {
         Entry::Config(config) => {
             vec![Entry::Config(visit_config(config))]
         }
+        Entry::If(_if) => {
+            unreachable!("if entries should have been eliminated in the previous pass")
+        }
         _ => vec![entry],
     };
 }
