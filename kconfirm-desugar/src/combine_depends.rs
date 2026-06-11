@@ -37,9 +37,11 @@ pub fn visit_config(config: Config) -> Config {
         match attribute {
             Attribute::DependsOn(dep) => match dep {
                 OrExpression::Term(t) => {
-                    all_dependencies.push(t);
+                    let or_expression = OrExpression::Term(t);
+                    all_dependencies.push(or_expression);
                 }
                 OrExpression::Expression(a) => {
+                    let or_expression = OrExpression::Term(t);
                     all_dependencies.extend(a);
                 }
             },
