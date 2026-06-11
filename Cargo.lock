@@ -241,6 +241,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "kconfirm-desugar"
+version = "0.9.0"
+dependencies = [
+ "env_logger",
+ "log",
+ "nom-kconfig",
+]
+
+[[package]]
 name = "kconfirm-lib"
 version = "0.9.0"
 dependencies = [

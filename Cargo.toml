@@ -11,7 +11,7 @@ version = "0.9.0"
 edition = "2024"
 
 [workspace]
-members = ["kconfirm-lib", "kconfirm-cli", "kconfirm-linux"]
+members = ["kconfirm-lib", "kconfirm-cli", "kconfirm-linux", "kconfirm-desugar"]
 resolver = "3"
 
 [workspace.package]
