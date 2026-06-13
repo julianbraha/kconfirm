@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#![doc = include_str!("../README.md")]
 mod analyze;
 mod checks;
 mod dead_links;
@@ -34,16 +35,27 @@ pub use symbol_table::*;
 ///
 /// # Examples
 ///
-/// ## Analyze Linux (x86 architecture)
-/// ```
-/// let mut my_checks = AnalysisArgs::new();
-/// my_checks.enable_check(Check::SelectVisible);
-/// let root_kconfig_path = PathBuf::from("Kconfig");
-/// let root_kconfig_file = KconfigFile::new(linux_source_dir, root_kconfig_path);
-/// let kconfig_input = KconfigInput::new_extra(&root_kconfig_file.read_to_string()?, root_kconfig_file);
-/// let x86_arch = String::from(X86);
-/// let kconfig_files = vec![Some(x86_arch), kconfig_input];
-/// let findings = check_kconfig(my_checks, root_kconfig_file);
+/// ## Analyze a Kconfig tree
+/// ```no_run
+/// use kconfirm_lib::{check_kconfig, print_findings, AnalysisArgs, Check};
+/// use nom_kconfig::{KconfigFile, KconfigInput};
+///
+/// # fn main() -> std::io::Result<()> {
+/// let mut checks = AnalysisArgs::new();
+/// checks.enable_check(Check::SelectVisible);
+///
+/// // Load the root Kconfig of the project under analysis.
+/// let kconfig_file = KconfigFile::new("linux".into(), "Kconfig".into());
+/// let contents = kconfig_file.read_to_string()?;
+/// let input = KconfigInput::new_extra(&contents, kconfig_file);
+///
+/// // Pair each input with an optional architecture-specific config option
+/// // (e.g. `Some("X86".to_string())` for `arch/x86/Kconfig`); use `None` when
+/// // the input is not architecture-specific.
+/// let findings = check_kconfig(checks, vec![(None, input)]);
+/// print_findings(findings);
+/// # Ok(())
+/// # }
 /// ```
 pub fn check_kconfig(
     args: AnalysisArgs,

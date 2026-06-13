@@ -235,14 +235,12 @@ fn recurse_entries(
 ///
 /// # Examples
 ///
-/// ```ignore
-/// use crate::analyze::analyze;
-/// use crate::symbol_table::SymbolTable;
-/// use crate::checks::AnalysisArgs;
+/// ```
+/// use kconfirm_lib::{analyze, AnalysisArgs, SymbolTable};
 ///
 /// let args = AnalysisArgs::new();
 /// let mut symtab = SymbolTable::new();
-/// let entries = vec![]; // Populated from a nom-kconfig parser pass
+/// let entries = vec![]; // Populated by the nom-kconfig parser.
 ///
 /// let findings = analyze(&args, &mut symtab, Some("x86".to_string()), entries);
 /// println!("Analysis on config option definitions complete. Total warnings: {}", findings.len());

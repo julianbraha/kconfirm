@@ -8,8 +8,8 @@ use std::fmt;
 ///
 /// # Examples
 ///
-/// ```ignore
-/// use crate::output::Severity;
+/// ```
+/// use kconfirm_lib::Severity;
 ///
 /// // Ordering enables sorting alerts from most critical to stylistic.
 /// assert!(Severity::Fatal > Severity::Error);
@@ -37,9 +37,8 @@ pub enum Severity {
 ///
 /// # Examples
 ///
-/// ```ignore
-/// use crate::checks::Check;
-/// use crate::output::{Finding, Severity};
+/// ```
+/// use kconfirm_lib::{Check, Finding, Severity};
 ///
 /// let alert = Finding {
 ///     severity: Severity::Warning,
@@ -113,9 +112,8 @@ impl fmt::Display for Finding {
 ///
 /// # Examples
 ///
-/// ```ignore
-/// use crate::checks::Check;
-/// use crate::output::{print_findings, Finding, Severity};
+/// ```
+/// use kconfirm_lib::{print_findings, Check, Finding, Severity};
 ///
 /// let findings = vec![
 ///     Finding {

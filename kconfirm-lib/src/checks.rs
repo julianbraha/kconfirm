@@ -29,7 +29,7 @@ use std::{
 /// # Examples
 ///
 /// ```
-/// use crate::checks::Check;
+/// use kconfirm_lib::Check;
 ///
 /// let rule = Check::ReverseRange;
 /// assert_eq!(rule.as_str(), "reverse_range");
@@ -78,7 +78,7 @@ impl Check {
     /// # Examples
     ///
     /// ```
-    /// use crate::checks::Check;
+    /// use kconfirm_lib::Check;
     ///
     /// assert_eq!(Check::DeadLink.as_str(), "dead_link");
     /// assert_eq!(Check::DuplicateRange.as_str(), "duplicate_range");
@@ -113,7 +113,7 @@ impl Check {
 /// # Examples
 ///
 /// ```
-/// use crate::checks::{parse_check, Check};
+/// use kconfirm_lib::{parse_check, Check};
 ///
 /// assert_eq!(parse_check("failed_parse"), Some(Check::FailedParse));
 /// assert_eq!(parse_check("reverse_range"), Some(Check::ReverseRange));
@@ -127,6 +127,7 @@ pub fn parse_check(name: &str) -> Option<Check> {
         "select_visible" => Some(Check::SelectVisible),
         "duplicate_dependency" => Some(Check::DuplicateDependency),
         "duplicate_range" => Some(Check::DuplicateRange),
+        "dead_range" => Some(Check::DeadRange),
         "duplicate_select" => Some(Check::DuplicateSelect),
         "dead_select" => Some(Check::DeadSelect),
         "dead_default" => Some(Check::DeadDefault),
@@ -146,8 +147,8 @@ pub fn parse_check(name: &str) -> Option<Check> {
 ///
 /// # Examples
 ///
-/// ```ignore
-/// use crate::checks::{AnalysisArgs, Check};
+/// ```
+/// use kconfirm_lib::{AnalysisArgs, Check};
 ///
 /// let mut args = AnalysisArgs::new();
 /// args.enable_check(Check::ReverseRange);

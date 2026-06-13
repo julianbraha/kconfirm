@@ -22,12 +22,15 @@ type Cond = Option<Expression>;
 ///
 /// # Examples
 ///
-/// ```ignore
-/// use crate::symbol_table::TypeInfo;
+/// ```
+/// use kconfirm_lib::SymbolTable;
 ///
-/// // TypeInfo structs are dynamically populated via parsing or structural resolution passes.
-/// let metadata = TypeInfo::new_empty();
-/// assert!(metadata.kconfig_type.is_none());
+/// // `TypeInfo` values are produced by analysis and stored in a `SymbolTable`,
+/// // keyed by the config-option name.
+/// let symtab = SymbolTable::new();
+/// if let Some(type_info) = symtab.raw.get("EXAMPLE_OPTION") {
+///     println!("Kconfig type: {:?}", type_info.kconfig_type);
+/// }
 /// ```
 #[derive(Debug, Clone)]
 pub struct TypeInfo {
@@ -52,10 +55,10 @@ pub struct TypeInfo {
 ///
 /// # Examples
 ///
-/// ```ignore
-/// use crate::symbol_table::AttributeDef;
+/// ```
+/// use kconfirm_lib::AttributeDef;
 ///
-/// // Initialized dynamically as attributes are parsed from the AST tree
+/// // Built up incrementally as a config option's attributes are parsed.
 /// let attributes = AttributeDef {
 ///     kconfig_dependencies: vec![],
 ///     kconfig_ranges: vec![],
@@ -64,6 +67,7 @@ pub struct TypeInfo {
 ///     selects: vec![],
 ///     implies: vec![],
 /// };
+/// assert!(attributes.kconfig_dependencies.is_empty());
 /// ```
 #[derive(Debug, Clone)]
 pub struct AttributeDef {
@@ -160,16 +164,17 @@ impl TypeInfo {
 ///
 /// # Examples
 ///
-/// ```ignore
-/// use crate::symbol_table::ChoiceData;
+/// ```
+/// use kconfirm_lib::ChoiceData;
 ///
-/// // Choice data entities are initialized dynamically during AST traversal phases.
+/// // Captured while traversing a `choice` block during analysis.
 /// let choice_block = ChoiceData {
 ///     arch: Some("arm64".to_string()),
 ///     visibility: None,
 ///     dependencies: vec![],
 ///     defaults: vec![],
 /// };
+/// assert_eq!(choice_block.arch.as_deref(), Some("arm64"));
 /// ```
 pub struct ChoiceData {
     /// The architecture that the `choice` appears in.
@@ -190,10 +195,10 @@ pub struct ChoiceData {
 ///
 /// # Examples
 ///
-/// ```ignore
-/// use crate::symbol_table::SymbolTable;
+/// ```
+/// use kconfirm_lib::SymbolTable;
 ///
-/// let mut symtab = SymbolTable::new();
+/// let symtab = SymbolTable::new();
 /// assert!(symtab.raw.is_empty());
 /// assert!(symtab.modules_option.is_none());
 /// ```
