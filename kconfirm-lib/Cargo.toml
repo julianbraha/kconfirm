@@ -1,9 +1,15 @@
 # SPDX-License-Identifier: GPL-2.0
 [package]
 name = "kconfirm-lib"
-version = "0.9.0"
+version = "0.9.1"
 edition = "2024"
 rust-version.workspace = true
+description = "Static analysis library for the Kconfig configuration language"
+license = "GPL-2.0-only"
+repository = "https://github.com/julianbraha/kconfirm"
+readme = "README.md"
+keywords = ["kconfig", "static-analysis", "linux", "linter"]
+categories = ["development-tools", "config"]
 
 [dependencies]
 nom-kconfig = { workspace = true }
