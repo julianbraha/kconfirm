@@ -1,7 +1,7 @@
 use nom_kconfig::{
     Attribute,
     Entry,
-    attribute::OrExpression,
+    attribute::{AndExpression, OrExpression, Term},
     entry::Config, //
 };
 
@@ -32,17 +32,17 @@ pub fn visit_config(config: Config) -> Config {
 
     let mut transformed_attributes = Vec::new();
 
-    let mut all_dependencies = Vec::new();
+    let mut all_dependencies: Vec<AndExpression> = Vec::new();
     for attribute in original_attributes {
         match attribute {
             Attribute::DependsOn(dep) => match dep {
                 OrExpression::Term(t) => {
-                    let or_expression = OrExpression::Term(t);
-                    all_dependencies.push(or_expression);
+                    all_dependencies.push(t);
                 }
                 OrExpression::Expression(a) => {
-                    let or_expression = OrExpression::Term(t);
-                    all_dependencies.extend(a);
+                    let and_expression = AndExpression::Expression(dep);
+                    //all_dependencies.push(dep);
+                    todo!();
                 }
             },
             _ => transformed_attributes.push(attribute),
