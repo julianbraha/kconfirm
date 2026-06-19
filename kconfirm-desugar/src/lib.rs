@@ -1,6 +1,7 @@
 mod combine_depends;
 mod distribute_if;
 mod expand_def_type;
+mod expand_depends_if;
 mod expand_source;
 mod expand_type_prompt;
 mod utils;
@@ -13,8 +14,12 @@ use nom_kconfig::{
 pub fn desugar_kconfig(source: Source) -> Vec<Entry> {
     let entries = expand_source::visit_source(source);
 
-    // adds the condition in the if entry's expression as a depends-on attribute to all contained entries, and removes the if entry.
+    // simplifies 'depends on X if Y'
     // also asserts that there are no `source` entries
+    let entries = expand_depends_if::visit_entries(entries);
+
+    // adds the condition in the if entry's expression as a depends-on attribute to all contained entries, and removes the if entry.
+    // also asserts that there are no 'depends on X if Y' attributes
     let entries = distribute_if::visit_entries(entries);
 
     // combines all of the depends-on attributes for each config option into a single attribute.
