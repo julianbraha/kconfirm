@@ -6,7 +6,7 @@ edition = "2024"
 rust-version.workspace = true
 
 [dependencies]
-nom-kconfig = { workspace = true }
+nom-kconfig = "0.12"
 log = { workspace = true }
 env_logger = { workspace = true }
 

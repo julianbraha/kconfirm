@@ -1,9 +1,11 @@
 use nom_kconfig::{
     Attribute,
     Entry,
-    attribute::{AndExpression, OrExpression, Term},
+    attribute::{OrExpression, Term, depends_on::DependsOn},
     entry::Config, //
 };
+
+use crate::and_terms::{combine_and_terms, into_and_terms};
 
 pub fn visit_entries(entries: Vec<Entry>) -> Vec<Entry> {
     let mut all_entries = Vec::new();

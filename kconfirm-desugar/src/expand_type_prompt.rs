@@ -72,7 +72,7 @@ pub fn visit_config(config: Config) -> Config {
                 }
                 String(s) => {
                     let type_definition = Attribute::Type(ConfigType {
-                        r#type: Type::Tristate(None),
+                        r#type: Type::String(None),
                         r#if: None,
                     });
 
@@ -88,7 +88,7 @@ pub fn visit_config(config: Config) -> Config {
                 }
                 Int(i) => {
                     let type_definition = Attribute::Type(ConfigType {
-                        r#type: Type::Tristate(None),
+                        r#type: Type::Int(None),
                         r#if: None,
                     });
 
@@ -104,7 +104,7 @@ pub fn visit_config(config: Config) -> Config {
                 }
                 Hex(h) => {
                     let type_definition = Attribute::Type(ConfigType {
-                        r#type: Type::Tristate(None),
+                        r#type: Type::Hex(None),
                         r#if: None,
                     });
 

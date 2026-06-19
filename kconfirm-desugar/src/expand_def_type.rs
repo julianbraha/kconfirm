@@ -5,7 +5,10 @@ use nom_kconfig::{
         DefaultAttribute,
         r#type::{
             ConfigType,
-            Type::{self, Bool, DefBool, DefTristate, Hex, Int, String, Tristate},
+            Type::{
+                self, Bool, DefBool, DefHex, DefInt, DefString, DefTristate, Hex, Int, String,
+                Tristate,
+            },
         },
     },
     entry::Config, //
@@ -66,12 +69,54 @@ pub fn visit_config(config: Config) -> Config {
                     transformed_attributes.push(type_definition);
                     transformed_attributes.push(default);
                 }
+                DefString(dt) => {
+                    let type_definition = Attribute::Type(ConfigType {
+                        r#type: Type::String(None),
+                        r#if: None,
+                    });
+
+                    let default = Attribute::Default(DefaultAttribute {
+                        expression: dt.to_owned(),
+                        r#if: None,
+                    });
+
+                    transformed_attributes.push(type_definition);
+                    transformed_attributes.push(default);
+                }
+                DefInt(dt) => {
+                    let type_definition = Attribute::Type(ConfigType {
+                        r#type: Type::Int(None),
+                        r#if: None,
+                    });
+
+                    let default = Attribute::Default(DefaultAttribute {
+                        expression: dt.to_owned(),
+                        r#if: None,
+                    });
+
+                    transformed_attributes.push(type_definition);
+                    transformed_attributes.push(default);
+                }
+                DefHex(dt) => {
+                    let type_definition = Attribute::Type(ConfigType {
+                        r#type: Type::Hex(None),
+                        r#if: None,
+                    });
+
+                    let default = Attribute::Default(DefaultAttribute {
+                        expression: dt.to_owned(),
+                        r#if: None,
+                    });
+
+                    transformed_attributes.push(type_definition);
+                    transformed_attributes.push(default);
+                }
                 Bool(t) | Tristate(t) | Int(t) | Hex(t) | String(t) => {
                     // prompts should have been expanded in a previous pass
                     assert!(t.is_none());
                     // identity
                     transformed_attributes.push(attribute);
-                } // TODO: if linux adds def_string, def_int, def_hex
+                }
             },
 
             _ => transformed_attributes.push(attribute),
