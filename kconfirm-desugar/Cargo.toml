@@ -9,7 +9,3 @@ rust-version.workspace = true
 nom-kconfig = "0.12"
 log = { workspace = true }
 env_logger = { workspace = true }
-
-[features]
-default = []
-coreboot = ["nom-kconfig/coreboot"]
