@@ -5,7 +5,7 @@ use nom_kconfig::{
     entry::Config, //
 };
 
-use crate::and_terms::{combine_and_terms, into_and_terms};
+use crate::utils::and_terms::{combine_and_terms, into_and_terms};
 
 pub fn visit_entries(entries: Vec<Entry>) -> Vec<Entry> {
     let mut all_entries = Vec::new();
@@ -30,32 +30,25 @@ pub fn visit_entry(entry: Entry) -> Vec<Entry> {
 
 // combines all of the `depends on` statements with a logical AND into one attribute
 pub fn visit_config(config: Config) -> Config {
-    let original_attributes = config.attributes;
-
     let mut transformed_attributes = Vec::new();
 
-    let mut all_dependencies: Vec<AndExpression> = Vec::new();
-    for attribute in original_attributes {
+    let mut and_terms: Vec<Term> = Vec::new();
+    for attribute in config.attributes {
         match attribute {
-            Attribute::DependsOn(dep) => match dep {
-                OrExpression::Term(t) => {
-                    all_dependencies.push(t);
-                }
-                OrExpression::Expression(a) => {
-                    let and_expression = AndExpression::Expression(dep);
-                    //all_dependencies.push(dep);
-                    todo!();
-                }
-            },
-            _ => transformed_attributes.push(attribute),
+            Attribute::DependsOn(dep) => and_terms.extend(into_and_terms(dep.expression)),
+            other => transformed_attributes.push(other),
         }
     }
-    transformed_attributes.push(Attribute::DependsOn(OrExpression::Expression(
-        all_dependencies,
-    )));
+
+    if let Some(combined) = combine_and_terms(and_terms) {
+        transformed_attributes.push(Attribute::DependsOn(DependsOn {
+            expression: OrExpression::Term(combined),
+            r#if: None,
+        }));
+    }
 
     Config {
         attributes: transformed_attributes,
-        symbol: config.symbol.clone(),
+        symbol: config.symbol,
     }
 }
