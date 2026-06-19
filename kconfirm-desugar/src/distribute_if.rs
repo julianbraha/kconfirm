@@ -5,7 +5,7 @@ use nom_kconfig::{
     entry::Config, //
 };
 
-use crate::and_terms::into_and_terms;
+use crate::utils::and_terms::into_and_terms;
 
 pub fn visit_entries(entries: Vec<Entry>) -> Vec<Entry> {
     let mut all_entries = Vec::new();
@@ -17,9 +17,8 @@ pub fn visit_entries(entries: Vec<Entry>) -> Vec<Entry> {
 }
 
 pub fn visit_entry(entry: Entry) -> Vec<Entry> {
-    return match entry {
+    let transformed_entry = match entry {
         Entry::If(r#if) => {
-            // TODO: distribute this expression to everything that follows
             let condition = r#if.condition;
 
             let inner_entries = r#if.entries;
@@ -29,16 +28,15 @@ pub fn visit_entry(entry: Entry) -> Vec<Entry> {
                 .flat_map(|e| distribute_dependency(e, condition.clone()))
                 .collect()
         }
+        // identity
         _ => vec![entry],
     };
+
+    transformed_entry
 }
 
-/// AND two `if` conditions together (`c1 && c2`).
-///
-/// Nested `if` blocks mean both conditions must hold. A top-level `||` in either
-/// condition is parenthesized (via [`into_and_terms`]) so it binds correctly
-/// under the `&&`: joining `a || b` with `c` yields `(a || b) && c`, not the
-/// wrong `a || b && c`.
+// ANDs two `if` conditions together (`c1 && c2`).
+// wraps a condition in parentheses if the condition has an ||
 fn and_conditions(c1: OrExpression, c2: OrExpression) -> OrExpression {
     let mut terms = into_and_terms(c1);
     terms.extend(into_and_terms(c2));
@@ -85,7 +83,7 @@ pub fn distribute_dependency(entry: Entry, condition: OrExpression) -> Vec<Entry
             // join the expressions with a logical-AND and make a recursive call
             let nested_condition = nested_if.condition;
 
-            let joined = join_or_expressions(condition, nested_condition);
+            let joined = and_conditions(condition, nested_condition);
 
             let mut all_entries = Vec::with_capacity(nested_if.entries.len());
             for nested_entry in nested_if.entries {
@@ -99,6 +97,14 @@ pub fn distribute_dependency(entry: Entry, condition: OrExpression) -> Vec<Entry
 
 pub fn visit_config(config: Config, new_dependency: Attribute) -> Config {
     let mut new_c = config.clone();
+
+    // just checking that the previous pass worked as intended...
+    for attribute in &new_c.attributes {
+        match attribute {
+            Attribute::DependsOn(dep) => assert!(dep.r#if.is_none()),
+            _ => {}
+        }
+    }
 
     new_c.attributes.push(new_dependency);
     new_c

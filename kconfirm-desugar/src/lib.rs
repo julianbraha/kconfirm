@@ -3,6 +3,7 @@ mod distribute_if;
 mod expand_def_type;
 mod expand_source;
 mod expand_type_prompt;
+mod utils;
 
 use nom_kconfig::{
     Entry,
