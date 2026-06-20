@@ -392,10 +392,9 @@ fn handle_config(
                     }
 
                     config_type = Some(kconfig_type);
-                }
-                Type::DefInt(_) | Type::DefHex(_) | Type::DefString(_) => {
-                    todo!("consider handling kconfiglib extension")
-                }
+                } /*Type::DefInt(_) | Type::DefHex(_) | Type::DefString(_) => {
+                      todo!("consider handling kconfiglib extension")
+                  }*/
             },
             Default(default) => {
                 attribute_grouping_checker.check(

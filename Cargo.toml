@@ -13,7 +13,6 @@ edition = "2024"
 [workspace]
 members = [
     "kconfirm-lib",
-    "kconfirm-cli",
     "kconfirm-linux",
     "kconfirm-desugar",
     "kconfirm-smt",
