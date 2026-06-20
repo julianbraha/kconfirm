@@ -393,6 +393,9 @@ fn handle_config(
 
                     config_type = Some(kconfig_type);
                 }
+                Type::DefInt(_) | Type::DefHex(_) | Type::DefString(_) => {
+                    todo!("consider handling kconfiglib extension")
+                }
             },
             Default(default) => {
                 attribute_grouping_checker.check(
@@ -417,7 +420,10 @@ fn handle_config(
                     format!("ungrouped dependency {}", &depends_on),
                 );
 
-                kconfig_dependencies.push(depends_on);
+                // NOTE: ignoring the new `if` condition on the dependency (the `r#if` field):
+                // `depends on X if Y` is treated as `depends on X`.
+                // TODO: desugar this using kconfirm-desugar
+                kconfig_dependencies.push(depends_on.expression);
             }
             Select(select) => {
                 attribute_grouping_checker.check(
@@ -608,8 +614,11 @@ fn handle_menu(
     }
 
     for dep in entry.depends_on {
-        child_ctx = child_ctx.with_dep(dep.clone());
-        child_ctx = child_ctx.with_visibility(Some(dep)); // not a typo, the config options inside of a menu are only visible if the menu's dependencies are satisfied
+        // NOTE: ignoring the new `if` condition on the dependency (the `r#if` field):
+        // `depends on X if Y` is treated as `depends on X`.
+        // TODO: desugar this using kconfirm-desugar
+        child_ctx = child_ctx.with_dep(dep.expression.clone());
+        child_ctx = child_ctx.with_visibility(Some(dep.expression)); // not a typo, the config options inside of a menu are only visible if the menu's dependencies are satisfied
     }
 
     let nested_entries = entry.entries;
@@ -637,7 +646,9 @@ fn handle_choice(
     for attribute in entry.options {
         match attribute {
             DependsOn(depends_on) => {
-                child_ctx = child_ctx.with_dep(depends_on);
+                // ignore the optional `if` condition on the dependency (`depends_on.r#if`):
+                // `depends on X if Y` is treated as `depends on X`.
+                child_ctx = child_ctx.with_dep(depends_on.expression);
             }
 
             Default(default) => {
@@ -693,7 +704,7 @@ fn handle_source(
     ctx: &Context,
     findings: &mut Vec<Finding>,
 ) {
-    let sourced_kconfig = entry.entries;
+    let sourced_kconfig = entry.kconfigs;
 
     for sourced_kconfig in sourced_kconfig {
         recurse_entries(args, symtab, sourced_kconfig.entries, ctx.clone(), findings);

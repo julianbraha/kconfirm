@@ -258,6 +258,7 @@ dependencies = [
  "log",
  "nom-kconfig",
  "regex",
+ "z3",
 ]
 
 [[package]]
@@ -268,6 +269,17 @@ dependencies = [
  "libc",
  "log",
  "nom-kconfig",
+]
+
+[[package]]
+name = "kconfirm-smt"
+version = "0.10.0"
+dependencies = [
+ "env_logger",
+ "kconfirm-lib",
+ "log",
+ "nom-kconfig",
+ "z3",
 ]
 
 [[package]]
@@ -311,15 +323,14 @@ dependencies = [
 
 [[package]]
 name = "nom-kconfig"
-version = "0.10.0"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c27ba674eb4a89c21e046dcaed8552f26c8332ba4951b167ec845d2abb8c95c4"
+checksum = "fd44838332d653aeba99fd534665feb52257b8fc26b3ea243004f86f8a0a93ac"
 dependencies = [
  "glob",
  "nom",
  "nom_locate",
- "regex",
- "tracing",
+ "serde",
 ]
 
 [[package]]
@@ -332,12 +343,6 @@ dependencies = [
  "memchr",
  "nom",
 ]
-
-[[package]]
-name = "once_cell"
-version = "1.21.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
 name = "once_cell_polyfill"
@@ -362,12 +367,6 @@ dependencies = [
  "pkg-config",
  "vcpkg",
 ]
-
-[[package]]
-name = "pin-project-lite"
-version = "0.2.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a89322df9ebe1c1578d689c92318e070967d1042b512afbe49518723f4e6d5cd"
 
 [[package]]
 name = "pkg-config"
@@ -447,6 +446,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde"
+version = "1.0.228"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a8e94ea7f378bd32cbbd37198a4a91436180c5bb472411e48b5ec2e2124ae9e"
+dependencies = [
+ "serde_core",
+ "serde_derive",
+]
+
+[[package]]
 name = "serde_core"
 version = "1.0.228"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -500,38 +509,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tracing"
-version = "0.1.44"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63e71662fa4b2a2c3a26f570f037eb95bb1f85397f3cd8076caed2f026a6d100"
-dependencies = [
- "log",
- "pin-project-lite",
- "tracing-attributes",
- "tracing-core",
-]
-
-[[package]]
-name = "tracing-attributes"
-version = "0.1.31"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7490cfa5ec963746568740651ac6781f701c9c5ea257c58e057f3ba8cf69e8da"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "tracing-core"
-version = "0.1.36"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db97caf9d906fbde555dd62fa95ddba9eecfd14cb388e4f491a66d74cd5fb79a"
-dependencies = [
- "once_cell",
-]
-
-[[package]]
 name = "unicode-ident"
 version = "1.0.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -562,4 +539,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ae137229bcbd6cdf0f7b80a31df61766145077ddf49416a728b02cb3921ff3fc"
 dependencies = [
  "windows-link",
+]
+
+[[package]]
+name = "z3"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c9fc44c9d6bb9fe84c03dfff211cf4c9c8cfefa2de8b803facf7305067d21a23"
+dependencies = [
+ "log",
+ "z3-sys",
+]
+
+[[package]]
+name = "z3-sys"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c18b0a91a13522d21b3414847667de2b2056a721a3edcb5b6ee6858352d58db4"
+dependencies = [
+ "pkg-config",
 ]

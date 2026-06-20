@@ -1,36 +1,20 @@
 // SPDX-License-Identifier: GPL-2.0-only
-
-use kconfirm_lib::{
-    AnalysisArgs,
-    Check,
-    check_kconfig,
-    parse_check, //
-    print_findings,
-};
+use crate::getopt_ffi::Getopt;
+use crate::getopt_ffi::REQUIRED_ARGUMENT;
+use crate::getopt_ffi::option;
+use kconfirm_lib::AnalysisArgs;
+use kconfirm_lib::Check;
+use kconfirm_lib::check_kconfig;
+use kconfirm_lib::output::print_findings;
+use kconfirm_lib::parse_check;
+use kconfirm_linux::ALL_ARCHITECTURES;
 use kconfirm_linux::collect_kconfig_root_files;
-use libc::c_char;
-use libc::getopt_long;
-use libc::option;
 use nom_kconfig::KconfigInput;
 use std::collections::HashSet;
-use std::env;
-use std::ffi::{
-    CStr,
-    CString, //
-};
-use std::{
-    io,
-    path::PathBuf,
-    ptr, //
-};
-
-const NO_ARGUMENT: i32 = 0;
-const REQUIRED_ARGUMENT: i32 = 1;
-
-unsafe extern "C" {
-    static mut optarg: *mut c_char;
-    static mut optind: i32;
-}
+use std::io;
+use std::path::PathBuf;
+use std::ptr;
+mod getopt_ffi;
 
 fn split_csv_arg(dst: &mut Vec<String>, value: &str) {
     dst.extend(
@@ -41,110 +25,106 @@ fn split_csv_arg(dst: &mut Vec<String>, value: &str) {
     );
 }
 
-fn parse_args() -> Result<Args, String> {
+#[derive(Debug)]
+pub struct Args {
+    pub linux_path: PathBuf,
+    pub enable_arch: Vec<String>,
+    pub disable_arch: Vec<String>,
+    pub enable_check: Vec<String>,
+    pub disable_check: Vec<String>,
+}
+
+pub fn parse_args() -> Result<Args, String> {
     let mut linux_path: Option<PathBuf> = None;
-    let mut enable = Vec::new();
-    let mut disable = Vec::new();
-
-    let raw_args: Vec<String> = env::args().collect();
-
-    let cstrings: Vec<CString> = raw_args
-        .iter()
-        .map(|s| CString::new(s.as_str()).unwrap())
-        .collect();
-
-    let mut argv: Vec<*mut c_char> = cstrings.iter().map(|s| s.as_ptr() as *mut c_char).collect();
-
-    argv.push(ptr::null_mut());
-
-    let argc = (argv.len() - 1) as i32;
+    let mut enable_arch = Vec::new();
+    let mut disable_arch = Vec::new();
+    let mut enable_check = Vec::new();
+    let mut disable_check = Vec::new();
 
     let long_options = [
         option {
-            name: c"linux-path".as_ptr() as *const c_char,
+            name: c"linux-path".as_ptr(),
             has_arg: REQUIRED_ARGUMENT,
             flag: ptr::null_mut(),
-            val: 'l' as i32,
+            val: 'l' as _,
         },
         option {
-            name: c"enable".as_ptr() as *const c_char,
+            name: c"enable-arch".as_ptr(),
             has_arg: REQUIRED_ARGUMENT,
             flag: ptr::null_mut(),
-            val: 'e' as i32,
+            val: 'a' as _,
         },
         option {
-            name: c"disable".as_ptr() as *const c_char,
+            name: c"disable-arch".as_ptr(),
             has_arg: REQUIRED_ARGUMENT,
             flag: ptr::null_mut(),
-            val: 'd' as i32,
+            val: 'x' as _,
+        },
+        option {
+            name: c"enable-check".as_ptr(),
+            has_arg: REQUIRED_ARGUMENT,
+            flag: ptr::null_mut(),
+            val: 'e' as _,
+        },
+        option {
+            name: c"disable-check".as_ptr(),
+            has_arg: REQUIRED_ARGUMENT,
+            flag: ptr::null_mut(),
+            val: 'd' as _,
         },
         option {
             name: ptr::null(),
-            has_arg: NO_ARGUMENT,
+            has_arg: 0,
             flag: ptr::null_mut(),
             val: 0,
         },
     ];
 
-    unsafe {
-        // reset getopt global state
-        optind = 1;
+    let mut getopt = Getopt::new();
 
-        loop {
-            let c = getopt_long(
-                argc,
-                argv.as_mut_ptr(),
-                c"l:e:d:".as_ptr() as *const c_char,
-                long_options.as_ptr(),
-                ptr::null_mut(),
-            );
+    getopt.reset();
 
-            if c == -1 {
-                break;
+    while let Some(result) = getopt.next(c"l:a:x:e:d:", &long_options) {
+        let (opt, arg) = result?;
+
+        match opt {
+            'l' => {
+                linux_path = Some(PathBuf::from(arg.unwrap()));
             }
 
-            match c as u8 as char {
-                'l' => {
-                    let arg = CStr::from_ptr(optarg).to_string_lossy().into_owned();
-
-                    linux_path = Some(PathBuf::from(arg));
-                }
-
-                'e' => {
-                    let arg = CStr::from_ptr(optarg).to_string_lossy().into_owned();
-
-                    split_csv_arg(&mut enable, &arg);
-                }
-
-                'd' => {
-                    let arg = CStr::from_ptr(optarg).to_string_lossy().into_owned();
-
-                    split_csv_arg(&mut disable, &arg);
-                }
-
-                '?' => {
-                    return Err("invalid argument".into());
-                }
-
-                _ => {}
+            'a' => {
+                split_csv_arg(&mut enable_arch, &arg.unwrap());
             }
+
+            'x' => {
+                split_csv_arg(&mut disable_arch, &arg.unwrap());
+            }
+
+            'e' => {
+                split_csv_arg(&mut enable_check, &arg.unwrap());
+            }
+
+            'd' => {
+                split_csv_arg(&mut disable_check, &arg.unwrap());
+            }
+
+            _ => {}
         }
     }
 
     let linux_path = linux_path.ok_or("--linux-path is required")?;
 
+    if enable_arch.is_empty() {
+        return Err("--enable-arch is required".into());
+    }
+
     Ok(Args {
         linux_path,
-        enable,
-        disable,
+        enable_arch,
+        disable_arch,
+        enable_check,
+        disable_check,
     })
-}
-
-#[derive(Debug)]
-struct Args {
-    linux_path: PathBuf,
-    enable: Vec<String>,
-    disable: Vec<String>,
 }
 
 fn main() -> io::Result<()> {
@@ -152,10 +132,7 @@ fn main() -> io::Result<()> {
         eprintln!("error: {e}");
         std::process::exit(1);
     });
-
-    let default_checks: HashSet<Check> = [
-        // need SMT solving before we can detect select-undefineds
-        // Check::SelectUndefined,
+    let mut enabled_checks: HashSet<Check> = [
         Check::DuplicateDependency,
         Check::DuplicateRange,
         Check::DeadRange,
@@ -167,43 +144,54 @@ fn main() -> io::Result<()> {
         Check::ReverseRange,
     ]
     .into_iter()
-    .collect();
-
+    .collect(); // apply --enable-check
+    for name in &cli_args.enable_check {
+        if let Some(c) = parse_check(name) {
+            enabled_checks.insert(c);
+        } else {
+            eprintln!("Error: check {} does not exist", name);
+            std::process::exit(1);
+        }
+    } // apply --disable-check
+    for name in &cli_args.disable_check {
+        if let Some(c) = parse_check(name) {
+            enabled_checks.remove(&c);
+        } else {
+            eprintln!("Error: check {} does not exist", name);
+            std::process::exit(1);
+        }
+    }
     let mut analysis_args = AnalysisArgs::new();
-
-    for check in default_checks {
+    for check in enabled_checks {
         analysis_args.enable_check(check);
     }
-
-    // apply --enable
-    for name in &cli_args.enable {
-        if let Some(c) = parse_check(name) {
-            analysis_args.enable_check(c);
+    let mut selected_arches: HashSet<String> = cli_args.enable_arch.iter().cloned().collect(); // apply --disable-arch
+    for arch in &cli_args.disable_arch {
+        selected_arches.remove(arch);
+    }
+    for desired_arch in &selected_arches {
+        if !ALL_ARCHITECTURES.contains(&desired_arch.as_str()) {
+            eprintln!("Error: unexpected architecture, please pass one of the following:");
+            for available_arch in ALL_ARCHITECTURES {
+                eprint!("{} ", available_arch);
+            }
+            eprintln!("");
+            std::process::exit(1);
         }
     }
-
-    // apply --disable
-    for name in &cli_args.disable {
-        if let Some(c) = parse_check(name) {
-            analysis_args.disable_check(c);
-        }
-    }
-
-    let kconfig_files = collect_kconfig_root_files(cli_args.linux_path)?;
-
-    let kconfig_inputs = kconfig_files
+    let kconfig_files =
+        collect_kconfig_root_files(selected_arches.into_iter().collect(), cli_args.linux_path)?;
+    let kconfig_inputs: Vec<(Option<String>, KconfigInput)> = kconfig_files
         .iter()
         .map(|kconfig| {
             let kconfig_input =
                 KconfigInput::new_extra(&kconfig.file_contents, kconfig.kconfig_file.clone());
-
-            (kconfig.arch_config_option.clone(), kconfig_input)
+            (Some(kconfig.arch_config_option.clone()), kconfig_input)
         })
         .collect();
 
     let findings = check_kconfig(analysis_args, kconfig_inputs);
 
     print_findings(findings);
-
     Ok(())
 }

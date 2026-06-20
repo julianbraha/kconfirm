@@ -203,7 +203,7 @@ pub fn check_reverse_ranges(
 
                     return i128::from_str_radix(trimmed, 16);
                 }
-                RangeBound::Symbol(_) => {
+                RangeBound::Symbol(_) | RangeBound::Variable(_) => {
                     // TODO: need SMT solving for this case
                     //       for now, the caller is expected not to pass these cases.
                     unreachable!("not handling variable ranges until SMT solving");
@@ -211,9 +211,13 @@ pub fn check_reverse_ranges(
             }
         }
 
-        if matches!(range.lower_bound, RangeBound::Symbol(_))
-            || matches!(range.upper_bound, RangeBound::Symbol(_))
-        {
+        if matches!(
+            range.lower_bound,
+            RangeBound::Symbol(_) | RangeBound::Variable(_)
+        ) || matches!(
+            range.upper_bound,
+            RangeBound::Symbol(_) | RangeBound::Variable(_)
+        ) {
             // not handling these cases until SMT solving.
             // don't return though, because we stil want to check the other ranges.
             continue;

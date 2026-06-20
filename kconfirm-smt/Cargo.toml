@@ -8,8 +8,8 @@ rust-version.workspace = true
 [dependencies]
 kconfirm-lib = { path = "../kconfirm-lib" }
 
-nom-kconfig = { version = "0.12" }
-z3 = "0.20"
+nom-kconfig = { workspace = true }
+z3 = { workspace = true }
 log = { workspace = true }
 env_logger = { workspace = true }
 

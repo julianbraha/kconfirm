@@ -3,7 +3,7 @@
 mod analyze;
 mod checks;
 mod dead_links;
-mod output;
+pub mod output;
 mod symbol_table;
 
 use nom_kconfig::{

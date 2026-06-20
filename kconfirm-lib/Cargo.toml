@@ -13,6 +13,7 @@ categories = ["development-tools", "config"]
 
 [dependencies]
 nom-kconfig = { workspace = true }
+z3 = { workspace = true }
 curl = { version = "0.4" }
 log = { workspace = true }
 env_logger = { workspace = true }
@@ -20,4 +21,4 @@ regex = { version = "1.12", default-features = false }
 
 [features]
 default = []
-coreboot = ["nom-kconfig/coreboot"]
+#coreboot = ["nom-kconfig/coreboot"]
