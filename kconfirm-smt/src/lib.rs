@@ -1,5 +1,6 @@
-use kconfirm_lib::{Check, Finding, Severity, SymbolTable, analyze};
+use kconfirm_lib::{AnalysisArgs, Check, Finding, Severity, SymbolTable, analyze};
 use kconfirm_linux::collect_kconfig_root_files;
+
 use nom_kconfig::{Entry, KconfigInput, parse_kconfig};
 use std::path::PathBuf;
 use z3::ast::Bool as z3_bool;
@@ -11,14 +12,17 @@ use crate::kconfig_to_smt::model_kconfig_type;
 mod kconfig_to_smt;
 
 pub fn model_kconfig(path: PathBuf) {
-    let kconfig_files = collect_kconfig_root_files(path).unwrap();
-    let kconfig_inputs = kconfig_files
+    let all_archs: Vec<String> = kconfirm_linux::ALL_ARCHITECTURES
+        .into_iter()
+        .map(|x| x.to_owned())
+        .collect();
+    let kconfig_files = collect_kconfig_root_files(all_archs, path).unwrap();
+    let kconfig_inputs: Vec<(Option<String>, KconfigInput)> = kconfig_files
         .iter()
         .map(|kconfig| {
             let kconfig_input =
                 KconfigInput::new_extra(&kconfig.file_contents, kconfig.kconfig_file.clone());
-
-            (kconfig.arch_config_option.clone(), kconfig_input)
+            (Some(kconfig.arch_config_option.clone()), kconfig_input)
         })
         .collect();
 
@@ -29,6 +33,9 @@ pub fn model_kconfig(path: PathBuf) {
         match parse_kconfig(kconfig_file) {
             Ok(parsed) => {
                 let entries: Vec<Entry> = parsed.1.entries;
+
+                let args = AnalysisArgs::new();
+
                 findings.extend(analyze(
                     &args,
                     &mut symbol_table,
@@ -49,7 +56,7 @@ pub fn model_kconfig(path: PathBuf) {
     }
 
     // convert the kconfig types to z3 types
-    for (symbol, kconfig_type_info) in symbol_table.raw {
+    for (symbol, mut kconfig_type_info) in symbol_table.raw {
         let kconfig_type = kconfig_type_info.kconfig_type;
 
         if let Some(t) = kconfig_type {

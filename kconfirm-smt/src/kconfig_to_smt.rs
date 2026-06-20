@@ -17,17 +17,17 @@ use z3::ast::String as z3_string;
 
 pub fn model_kconfig_type(symbol: String, kconfig_type: &Type) -> Z3Types {
     match kconfig_type {
-        kconfig_bool(_) | Type::DefBool(_) => {
+        Type::Bool(_) | Type::DefBool(_) => {
             println!(
                 "TODO: creating a z3 integer for a tristate. make sure we add the [0, 2] range constraint for this later..."
             );
             Z3Types::Integer(z3_int::new_const(symbol))
         }
 
-        kconfig_string(s) => Z3Types::String(z3_string::new_const(symbol)),
-        kconfig_int(i) => Z3Types::Integer(z3_int::new_const(symbol)),
+        Type::String(s) => Z3Types::String(z3_string::new_const(symbol)),
+        Type::Int(i) => Z3Types::Integer(z3_int::new_const(symbol)),
 
-        kconfig_hex(h) => {
+        Type::Hex(h) => {
             println!(
                 "TODO: creating a z3 integer for a hex. make sure we convert the model's assigned value back to hex representation when writing the config"
             );
