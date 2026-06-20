@@ -11,6 +11,9 @@ use std::collections::{
     HashMap,
     hash_map, //
 };
+use z3::ast::Bool as z3_bool;
+use z3::ast::Int as z3_int;
+use z3::ast::String as z3_string;
 
 type KconfigSymbol = String;
 type Arch = Option<String>;
@@ -39,6 +42,10 @@ pub struct TypeInfo {
     /// (e.g. dangling references, or for symbols without types).
     pub kconfig_type: Option<Type>,
 
+    /// The Z3 type.
+    /// `None` is used when the kconfig type is unknown or hasn't been transformed yet.
+    pub z3_type: Option<Z3Types>,
+
     /// Maps the selector of this symbol to the architecture and the `select` condition.
     /// If the architecture is `None`, then it's not arch-specific.
     /// If the condition is `None`, then the `select` is unconditional.
@@ -47,6 +54,19 @@ pub struct TypeInfo {
     /// Maps the architecture to the various partial definitions of the `config` option with their
     /// condition expressions.
     pub attribute_defs: HashMap<Arch, Vec<(Vec<Expression>, AttributeDef)>>,
+}
+
+/// kconfirm's wrapper around the Z3 types that we use, so that we can refer to them in the symbol
+/// table.
+///
+/// Kconfig `tristate`, `int`, and `hex` types are all modeled as integers in SMT.
+#[derive(Clone, Debug)]
+pub enum Z3Types {
+    Bool(z3_bool),
+    Tristate(z3_int),
+    String(z3_string),
+    Integer(z3_int),
+    Hex(z3_int),
 }
 
 /// Keeps track of the attributes of a `config` option. Each option may have multiple, partial
@@ -91,6 +111,7 @@ impl TypeInfo {
     fn new_empty() -> Self {
         Self {
             kconfig_type: None,
+            z3_type: None,
             selected_by: HashMap::new(),
             attribute_defs: HashMap::new(),
         }
