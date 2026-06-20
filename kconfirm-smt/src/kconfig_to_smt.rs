@@ -1,13 +1,13 @@
 use kconfirm_lib::TypeInfo;
 use kconfirm_lib::Z3Types;
-use nom_kconfig::attribute::expression::CompareOperand;
-use nom_kconfig::attribute::r#type::Type;
+use nom_kconfig::Symbol;
 use nom_kconfig::attribute::AndExpression;
 use nom_kconfig::attribute::Atom;
 use nom_kconfig::attribute::OrExpression;
+use nom_kconfig::attribute::expression::CompareOperand;
+use nom_kconfig::attribute::r#type::Type;
 use nom_kconfig::symbol::ConstantSymbol;
 use nom_kconfig::tristate::Tristate;
-use nom_kconfig::Symbol;
 use std::collections::HashMap;
 use std::num::ParseIntError;
 use std::str::FromStr;
@@ -15,7 +15,7 @@ use z3::ast::Bool as z3_bool;
 use z3::ast::Int as z3_int;
 use z3::ast::String as z3_string;
 
-pub fn model_kconfig_type(symbol: String, kconfig_type: &Type) -> Z3Types {
+pub fn model_kconfig_type(symbol: &str, kconfig_type: &Type) -> Z3Types {
     match kconfig_type {
         Type::Bool(_) | Type::DefBool(_) => {
             println!(
@@ -90,7 +90,7 @@ fn model_kconfig_atom(symbol_table: &HashMap<String, TypeInfo>, atom: Atom) -> O
                 return model_kconfig_and_expr(symbol_table, term);
             }
             OrExpression::Expression(or_expr) => {
-                let expression_bool: z3_bool = model_kconfig_or_expr(symbol_table, or_expr);
+                let expression_bool: z3_bool = model_kconfig_and_exprs(symbol_table, or_expr);
                 return Some(Z3Types::Bool(expression_bool));
             }
         },
@@ -196,8 +196,24 @@ fn model_kconfig_identifier(symbol_table: &HashMap<String, TypeInfo>, sym: &str)
     }
 }
 
+/// May need to model just a single variable, so this may be e.g. a z3 String
+pub fn model_kconfig_or_expr(
+    symbol_table: &HashMap<String, TypeInfo>,
+    or_expr: OrExpression,
+) -> Option<Z3Types> {
+    match or_expr {
+        OrExpression::Term(term) => {
+            return model_kconfig_and_expr(symbol_table, term);
+        }
+        OrExpression::Expression(or_expr) => {
+            let expression_bool: z3_bool = model_kconfig_and_exprs(symbol_table, or_expr);
+            return Some(Z3Types::Bool(expression_bool));
+        }
+    }
+}
+
 /// Models a Kconfig OR expression as an SMT formula (z3 bool).
-fn model_kconfig_or_expr(
+pub fn model_kconfig_and_exprs(
     symbol_table: &HashMap<String, TypeInfo>,
     or_expr: Vec<AndExpression>,
 ) -> z3_bool {
