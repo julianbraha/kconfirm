@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: GPL-2.0-only
 use crate::{
-    AnalysisArgs,
-    Check,
-    SymbolTable,
     dead_links::{
         self,
-        LinkStatus,
         check_link, //
+        LinkStatus,
     },
     output::{
         Finding,
         Severity, //
     },
     symbol_table::ChoiceData, //
+    AnalysisArgs,
+    Check,
+    SymbolTable,
 };
 use log::{
     debug,
@@ -20,14 +20,12 @@ use log::{
     warn, //
 };
 use nom_kconfig::{
-    Attribute::*,
-    Entry,
     attribute::{
+        r#type::Type, //
         DefaultAttribute,
         Expression,
         Imply,
         Select,
-        r#type::Type, //
     },
     entry::{
         Choice,
@@ -36,6 +34,8 @@ use nom_kconfig::{
         Menu,
         Source, //
     },
+    Attribute::*,
+    Entry,
 };
 use std::{
     collections::HashSet,
@@ -392,9 +392,10 @@ fn handle_config(
                     }
 
                     config_type = Some(kconfig_type);
-                } /*Type::DefInt(_) | Type::DefHex(_) | Type::DefString(_) => {
-                      todo!("consider handling kconfiglib extension")
-                  }*/
+                }
+                Type::DefInt(_) | Type::DefHex(_) | Type::DefString(_) => {
+                    todo!("consider handling kconfiglib extension")
+                }
             },
             Default(default) => {
                 attribute_grouping_checker.check(

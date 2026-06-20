@@ -1,13 +1,13 @@
 use kconfirm_lib::TypeInfo;
 use kconfirm_lib::Z3Types;
-use nom_kconfig::Symbol;
+use nom_kconfig::attribute::expression::CompareOperand;
+use nom_kconfig::attribute::r#type::Type;
 use nom_kconfig::attribute::AndExpression;
 use nom_kconfig::attribute::Atom;
 use nom_kconfig::attribute::OrExpression;
-use nom_kconfig::attribute::expression::CompareOperand;
-use nom_kconfig::attribute::r#type::Type;
 use nom_kconfig::symbol::ConstantSymbol;
 use nom_kconfig::tristate::Tristate;
+use nom_kconfig::Symbol;
 use std::collections::HashMap;
 use std::num::ParseIntError;
 use std::str::FromStr;
@@ -39,6 +39,9 @@ pub fn model_kconfig_type(symbol: String, kconfig_type: &Type) -> Z3Types {
                 "TODO: creating a z3 integer for a tristate. make sure we add the [0, 2] range constraint for this later..."
             );
             Z3Types::Integer(z3_int::new_const(symbol))
+        }
+        Type::DefString(_) | Type::DefHex(_) | Type::DefInt(_) => {
+            todo!("consider supporting kconfiglib extension")
         }
     }
 }

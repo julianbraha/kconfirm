@@ -25,6 +25,7 @@ rust-version = "1.85.0"
 [workspace.dependencies]
 nom-kconfig = { version = "0.12", default-features = false, features = [
     "display",
+    "kconfiglib"
 ] }
 log = "0.4"
 env_logger = "0.11"
