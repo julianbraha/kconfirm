@@ -17,22 +17,33 @@ pub fn visit_entries(entries: Vec<Entry>) -> Vec<Entry> {
 }
 
 pub fn visit_entry(entry: Entry) -> Vec<Entry> {
-    let transformed_entry = match entry {
+    match entry {
+        // flatten the `if`: push its condition onto every contained entry and
+        // drop the `if` itself.
         Entry::If(r#if) => {
             let condition = r#if.condition;
-
-            let inner_entries = r#if.entries;
-
-            inner_entries
+            r#if.entries
                 .into_iter()
                 .flat_map(|e| distribute_dependency(e, condition.clone()))
                 .collect()
         }
+        // not inside an `if`, but these containers may hold nested `if`s, so we
+        // still recurse to flatten those.
+        Entry::Menu(mut menu) => {
+            menu.entries = visit_entries(menu.entries);
+            vec![Entry::Menu(menu)]
+        }
+        Entry::Choice(mut choice) => {
+            choice.entries = visit_entries(choice.entries);
+            vec![Entry::Choice(choice)]
+        }
+        // a config that isn't inside an `if` keeps its dependencies unchanged,
+        // but the previous pass must still have expanded any `depends on X if Y`.
+        Entry::Config(c) => vec![Entry::Config(assert_depends_if_expanded(c))],
+        Entry::MenuConfig(c) => vec![Entry::MenuConfig(assert_depends_if_expanded(c))],
         // identity
         _ => vec![entry],
-    };
-
-    transformed_entry
+    }
 }
 
 // ANDs two `if` conditions together (`c1 && c2`).
@@ -44,68 +55,64 @@ fn and_conditions(c1: OrExpression, c2: OrExpression) -> OrExpression {
     OrExpression::Term(AndExpression::Expression(terms))
 }
 
+/// Adds `condition` as a `depends on` to `entry`. For `menu`/`choice`
+/// containers the condition is added to the container's own dependency list;
+/// their inner config options inherit it later via the menu/choice distribution
+/// passes. We still recurse into the containers here to flatten any nested
+/// `if`s.
 pub fn distribute_dependency(entry: Entry, condition: OrExpression) -> Vec<Entry> {
     match entry {
         Entry::Config(c) | Entry::MenuConfig(c) => {
-            let new_dependency = Attribute::DependsOn(DependsOn {
+            vec![Entry::Config(push_dependency(c, condition))]
+        }
+        Entry::Choice(mut choice) => {
+            choice
+                .options
+                .push(Attribute::DependsOn(DependsOn {
+                    expression: condition,
+                    r#if: None,
+                }));
+            choice.entries = visit_entries(choice.entries);
+            vec![Entry::Choice(choice)]
+        }
+        Entry::Menu(mut menu) => {
+            menu.depends_on.push(DependsOn {
                 expression: condition,
                 r#if: None,
             });
-            let new_c = visit_config(c, new_dependency);
-            vec![Entry::Config(new_c)]
+            menu.entries = visit_entries(menu.entries);
+            vec![Entry::Menu(menu)]
         }
-        Entry::Choice(c) => {
-            let new_dependency = Attribute::DependsOn(DependsOn {
-                expression: condition,
-                r#if: None,
-            });
-            let mut new_c = c.clone();
-
-            new_c.options.push(new_dependency);
-            vec![Entry::Choice(new_c)]
-        }
-        Entry::Comment(_) => {
-            // do nothing for comment
-            vec![entry.clone()]
-        }
-
-        Entry::Menu(m) => {
-            let mut new_m = m.clone();
-            new_m.depends_on.push(DependsOn {
-                expression: condition,
-                r#if: None,
-            });
-
-            vec![Entry::Menu(new_m)]
-        }
-
         Entry::If(nested_if) => {
-            // join the expressions with a logical-AND and make a recursive call
-            let nested_condition = nested_if.condition;
-
-            let joined = and_conditions(condition, nested_condition);
-
-            let mut all_entries = Vec::with_capacity(nested_if.entries.len());
-            for nested_entry in nested_if.entries {
-                all_entries.extend(distribute_dependency(nested_entry, joined.clone()));
-            }
-            all_entries
+            // join the conditions with a logical-AND and keep flattening.
+            let joined = and_conditions(condition, nested_if.condition);
+            nested_if
+                .entries
+                .into_iter()
+                .flat_map(|nested_entry| distribute_dependency(nested_entry, joined.clone()))
+                .collect()
         }
-        _ => todo!("probably identity, but make sure to check this!"),
+        // comments and anything else have nothing to depend on.
+        _ => vec![entry],
     }
 }
 
-pub fn visit_config(config: Config, new_dependency: Attribute) -> Config {
-    let mut new_c = config.clone();
+/// Append `condition` to a config's `depends on` attributes.
+pub fn push_dependency(config: Config, condition: OrExpression) -> Config {
+    let mut new_c = assert_depends_if_expanded(config);
+    new_c.attributes.push(Attribute::DependsOn(DependsOn {
+        expression: condition,
+        r#if: None,
+    }));
+    new_c
+}
 
-    // just checking that the previous pass worked as intended...
-    for attribute in &new_c.attributes {
-        match attribute {
-            Attribute::DependsOn(dep) => assert!(dep.r#if.is_none()),
-            _ => {}
+/// Assert that `expand_depends_if` already removed every `depends on X if Y`.
+fn assert_depends_if_expanded(config: Config) -> Config {
+    for attribute in &config.attributes {
+        if let Attribute::DependsOn(dep) = attribute {
+            assert!(dep.r#if.is_none());
         }
     }
-
-    new_c.attributes.push(new_dependency);
-    new_c
+    config
 }

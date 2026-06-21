@@ -71,12 +71,19 @@ fn expand_attribute(attribute: Attribute) -> Attribute {
 }
 
 /// Fold the `if Y` of a `depends on X if Y` into the dependency expression,
-/// yielding `depends on X || (Y == n)`. A plain `depends on X` is left as-is.
+/// yielding `depends on X || (Y = n)`. A plain `depends on X` is left as-is.
+///
+/// We only model the `if` condition when it is a single config option, possibly
+/// negated (`Y` or `!Y`). Anything more complex is ignored: the `if` is dropped
+/// and the dependency is left as the plain `depends on X`.
 fn expand_depends_on(dependency: DependsOn) -> DependsOn {
     match dependency.r#if {
         None => dependency,
         Some(condition) => DependsOn {
-            expression: or_with(dependency.expression, condition_is_off(condition)),
+            expression: match condition_is_off(condition) {
+                Some(off) => or_with(dependency.expression, off),
+                None => dependency.expression,
+            },
             r#if: None,
         },
     }
@@ -93,31 +100,39 @@ fn or_with(expression: Expression, disjunct: AndExpression) -> Expression {
     }
 }
 
-/// Build the `(Y == n)` disjunct, which holds exactly when the `if` condition
-/// `Y` is disabled — so the dependency is waived in that case.
-fn condition_is_off(condition: Expression) -> AndExpression {
-    let symbol = match single_symbol(&condition) {
-        Some(symbol) => symbol.clone(),
-        None => todo!("'depends on X if Y' where Y is not a single symbol: {condition}"),
+/// Build the disjunct that holds exactly when the `if` condition is off, so the
+/// dependency is waived in that case. Only a single config option `Y` (or its
+/// negation `!Y`) is supported:
+/// - `if Y`  is off when `Y` is disabled:        `(Y = n)`
+/// - `if !Y` is off when `Y` is enabled:         `(Y != n)`
+///
+/// Returns `None` for any more complex condition, which the caller then ignores.
+fn condition_is_off(condition: Expression) -> Option<AndExpression> {
+    let term = match condition {
+        OrExpression::Term(AndExpression::Term(term)) => term,
+        _ => return None,
     };
 
-    let comparison = Atom::Compare(CompareExpression {
-        left: CompareOperand::Symbol(symbol),
-        operator: CompareOperator::Equal,
-        right: CompareOperand::Symbol(Symbol::Constant(ConstantSymbol::Tristate(Tristate::No))),
-    });
+    let comparison = match term {
+        // `if Y`: the dependency is waived when Y is `n`.
+        Term::Atom(Atom::Symbol(symbol)) => symbol_compare(symbol, CompareOperator::Equal),
+        // `if !Y`: `!Y` is off exactly when Y is not `n`.
+        Term::Not(Atom::Symbol(symbol)) => symbol_compare(symbol, CompareOperator::NotEqual),
+        _ => return None,
+    };
 
-    // wrap in parentheses so the dependency reads `X || (Y == n)`
+    // wrap in parentheses so the dependency reads `X || (Y = n)`
     let parenthesized = Atom::Parenthesis(Box::new(OrExpression::Term(AndExpression::Term(
         Term::Atom(comparison),
     ))));
-    AndExpression::Term(Term::Atom(parenthesized))
+    Some(AndExpression::Term(Term::Atom(parenthesized)))
 }
 
-/// If `expression` is a single bare symbol, return it.
-fn single_symbol(expression: &Expression) -> Option<&Symbol> {
-    match expression {
-        OrExpression::Term(AndExpression::Term(Term::Atom(Atom::Symbol(symbol)))) => Some(symbol),
-        _ => None,
-    }
+/// Build the comparison atom `symbol <op> n` (e.g. `Y = n` or `Y != n`).
+fn symbol_compare(symbol: Symbol, operator: CompareOperator) -> Atom {
+    Atom::Compare(CompareExpression {
+        left: CompareOperand::Symbol(symbol),
+        operator,
+        right: CompareOperand::Symbol(Symbol::Constant(ConstantSymbol::Tristate(Tristate::No))),
+    })
 }
