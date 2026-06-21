@@ -19,10 +19,18 @@ pub fn desugar_kconfig(source: Source) -> Vec<Entry> {
     let entries = expand_depends_if::visit_entries(entries);
 
     // adds the condition in the if entry's expression as a depends-on attribute to all contained entries, and removes the if entry.
+    // recurses into menu/choice containers to flatten nested ifs.
     // also asserts that there are no 'depends on X if Y' attributes
     let entries = distribute_if::visit_entries(entries);
 
-    // combines all of the depends-on attributes for each config option into a single attribute.
+    // copies each menu's dependencies down onto the config options it contains.
+    let entries = distribute_menu::visit_entries(entries);
+
+    // copies each choice's dependencies down onto the config options it contains.
+    let entries = distribute_choice::visit_entries(entries);
+
+    // combines all of the depends-on attributes for each config option (and for
+    // menu/choice containers) into a single attribute, recursively.
     // also asserts that there are no `if` entries
     let entries = combine_depends::visit_entries(entries);
 
