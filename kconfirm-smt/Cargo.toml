@@ -8,6 +8,7 @@ rust-version.workspace = true
 [dependencies]
 kconfirm-lib = { path = "../kconfirm-lib" }
 kconfirm-linux = { path = "../kconfirm-linux" }
+kconfirm-desugar = { path = "../kconfirm-desugar" }
 
 nom-kconfig = { workspace = true }
 z3 = { workspace = true }

@@ -56,57 +56,6 @@ pub struct TypeInfo {
     pub attribute_defs: HashMap<Arch, Vec<(Vec<Expression>, AttributeDef)>>,
 }
 
-/// kconfirm's wrapper around the Z3 types that we use, so that we can refer to them in the symbol
-/// table.
-///
-/// Kconfig `tristate`, `int`, and `hex` types are all modeled as integers in SMT.
-#[derive(Clone, Debug)]
-pub enum Z3Types {
-    Bool(z3_bool),
-    Tristate(z3_int),
-    String(z3_string),
-    Integer(z3_int),
-    Hex(z3_int),
-}
-
-/// Keeps track of the attributes of a `config` option. Each option may have multiple, partial
-/// definitions spread out throughout Kconfig, and need to be merged, so each field of this struct
-/// uses a Vector for appending.
-///
-/// # Examples
-///
-/// ```
-/// use kconfirm_lib::AttributeDef;
-///
-/// // Built up incrementally as a config option's attributes are parsed.
-/// let attributes = AttributeDef {
-///     kconfig_dependencies: vec![],
-///     kconfig_ranges: vec![],
-///     kconfig_defaults: vec![],
-///     visibility: vec![],
-///     selects: vec![],
-///     implies: vec![],
-/// };
-/// assert!(attributes.kconfig_dependencies.is_empty());
-/// ```
-#[derive(Debug, Clone)]
-pub struct AttributeDef {
-    /// The dependencies of the `config` option. Need to be logically AND'd to get the entire
-    /// condition.
-    pub kconfig_dependencies: Vec<OrExpression>,
-    /// The `range` attributes of the `config` option. Only used for the `int` and `hex` types.
-    pub kconfig_ranges: Vec<Range>,
-    /// The `default` attributes of the `config` option. Order is preserved from the source.
-    pub kconfig_defaults: Vec<DefaultAttribute>,
-    /// The visibility condition of the `config` option. Need to be logically AND'd to get the
-    /// entire condition.
-    pub visibility: Vec<Option<OrExpression>>,
-    /// The `select` attributes of the `config` option. Represents reverse dependencies in Kconfig.
-    pub selects: Vec<(KconfigSymbol, Cond)>,
-    /// The `imply` attributes of the `config` option.
-    pub implies: Vec<(KconfigSymbol, Cond)>,
-}
-
 impl TypeInfo {
     fn new_empty() -> Self {
         Self {
@@ -123,7 +72,7 @@ impl TypeInfo {
     fn insert(
         &mut self,
         kconfig_type: Option<Type>,
-        raw_constraints: Vec<OrExpression>,
+        raw_constraints: Option<OrExpression>,
         kconfig_ranges: Vec<Range>,
         kconfig_defaults: Vec<DefaultAttribute>,
         visibility: Vec<Option<OrExpression>>,
@@ -156,7 +105,7 @@ impl TypeInfo {
         //   we only want to add an attribute redefinition if the things in the attribute def aren't empty
         //   (the visibility is just additional info to capture)
         if (&kconfig_type).is_some() // we need to ensure that we have an empty definition here if the config option had a type definition
-            || !raw_constraints.is_empty()
+            || raw_constraints.is_some()
             || !kconfig_ranges.is_empty()
             || !kconfig_defaults.is_empty()
             || !selects.is_empty()
@@ -177,6 +126,87 @@ impl TypeInfo {
             );
         }
     }
+}
+
+/// kconfirm's wrapper around the Z3 types that we use, so that we can refer to them in the symbol
+/// table.
+///
+/// Kconfig `tristate`, `int`, and `hex` types are all modeled as integers in SMT.
+#[derive(Clone, Debug)]
+pub enum Z3Types {
+    Bool(z3_bool),
+    Tristate(z3_int),
+    String(z3_string),
+    Integer(z3_int),
+    Hex(z3_int),
+}
+
+impl Z3Types {
+    /// Models enabling the config option in kconfig.
+    ///
+    /// E.g. for bool this is `true`, for tristate (modeled as an integer `i` in range `0 <= i <= 2`)
+    ///     this is `i >= 1`.
+    pub fn enabled(&self) -> z3_bool {
+        return match self {
+            Z3Types::Bool(b) => b.eq(z3_bool::from_bool(true)),
+            Z3Types::Tristate(t) => t.ge(z3_int::from_u64(1)),
+
+            // NOTE: there is no concept of "enabling" an integer, a condition `i` is always false.
+            Z3Types::Integer(i) => panic!(
+                "attempted to check if an Integer {} config option is enabled! This may be a bug in kconfig!",
+                i
+            ),
+            // NOTE: there is no concept of "enabling" an integer, a condition `i` is always false.
+            Z3Types::Hex(h) => panic!(
+                "attempted to check if a Hex {} config option is enabled! This may be a bug in kconfig!",
+                h
+            ),
+
+            // NOTE: there is no concept of "enabling" a string, a condition `S` is always false.
+            Z3Types::String(s) => panic!(
+                "attempted to check if a String {} config option is enabled! This may be a bug in kconfig!",
+                s
+            ),
+        };
+    }
+}
+
+/// Keeps track of the attributes of a `config` option. Each option may have multiple, partial
+/// definitions spread out throughout Kconfig, and need to be merged.
+///
+/// # Examples
+///
+/// ```
+/// use kconfirm_lib::AttributeDef;
+///
+/// // Built up incrementally as a config option's attributes are parsed.
+/// let attributes = AttributeDef {
+///     kconfig_dependencies: None,
+///     kconfig_ranges: vec![],
+///     kconfig_defaults: vec![],
+///     visibility: vec![],
+///     selects: vec![],
+///     implies: vec![],
+/// };
+/// assert!(attributes.kconfig_dependencies.is_none());
+/// ```
+#[derive(Debug, Clone)]
+pub struct AttributeDef {
+    /// The combined dependency condition of the `config` option, or `None` if it has no
+    /// dependencies. kconfirm-desugar folds every `depends on` (including those inherited from
+    /// enclosing menus/choices/ifs) into this single expression.
+    pub kconfig_dependencies: Option<OrExpression>,
+    /// The `range` attributes of the `config` option. Only used for the `int` and `hex` types.
+    pub kconfig_ranges: Vec<Range>,
+    /// The `default` attributes of the `config` option. Order is preserved from the source.
+    pub kconfig_defaults: Vec<DefaultAttribute>,
+    /// The visibility condition of the `config` option. Need to be logically AND'd to get the
+    /// entire condition.
+    pub visibility: Vec<Option<OrExpression>>,
+    /// The `select` attributes of the `config` option. Represents reverse dependencies in Kconfig.
+    pub selects: Vec<(KconfigSymbol, Cond)>,
+    /// The `imply` attributes of the `config` option.
+    pub implies: Vec<(KconfigSymbol, Cond)>,
 }
 
 /// The information about a Kconfig `choice`. Not a `config` option but still has attributes that
@@ -261,7 +291,7 @@ impl SymbolTable {
         &mut self,
         var: KconfigSymbol,
         kconfig_type: Option<Type>,
-        raw_constraints: Vec<OrExpression>,
+        raw_constraints: Option<OrExpression>,
         kconfig_ranges: Vec<Range>,
         kconfig_defaults: Vec<DefaultAttribute>,
         visibility: Vec<Option<OrExpression>>,

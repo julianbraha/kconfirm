@@ -273,7 +273,7 @@ pub fn check_constant_conditions(
         arch,
         &mut findings,
         &var_symbol,
-        &info.kconfig_dependencies,
+        info.kconfig_dependencies.as_ref(),
         default_conditions,
         "default",
     );
@@ -288,7 +288,7 @@ pub fn check_constant_conditions(
         arch,
         &mut findings,
         var_symbol,
-        &info.kconfig_dependencies,
+        info.kconfig_dependencies.as_ref(),
         select_conditions,
         "select",
     );
@@ -303,7 +303,7 @@ pub fn check_constant_conditions(
         arch,
         &mut findings,
         var_symbol,
-        &info.kconfig_dependencies,
+        info.kconfig_dependencies.as_ref(),
         imply_conditions,
         "imply",
     );
@@ -318,7 +318,7 @@ pub fn check_constant_conditions(
         arch,
         &mut findings,
         var_symbol,
-        &info.kconfig_dependencies,
+        info.kconfig_dependencies.as_ref(),
         range_conditions,
         "range",
     );
@@ -327,13 +327,13 @@ pub fn check_constant_conditions(
         arch: &Option<String>,
         findings: &mut Vec<Finding>,
         symbol: &str,
-        kconfig_dependencies: &[Expression],
+        kconfig_dependencies: Option<&Expression>,
         attribute_conditions: Vec<&Expression>,
         context: &str,
     ) {
         for attribute_condition in attribute_conditions.into_iter() {
-            // check if the attribute condition is contained
-            if kconfig_dependencies.contains(attribute_condition) {
+            // check if the attribute condition is the (single, combined) dependency
+            if kconfig_dependencies == Some(attribute_condition) {
                 let message = format!(
                     "constant {} condition 'if {}' for config option: {}, this condition is a dependency and will always be true",
                     context,
@@ -379,7 +379,7 @@ pub fn check_constant_conditions(
             };
 
             if let Some(negative) = negative_attribute_condition {
-                if kconfig_dependencies.contains(&negative) {
+                if kconfig_dependencies == Some(&negative) {
                     let message = format!(
                         "constant {} condition 'if {}' for config option: {}, the negation of this condition is a dependency and will always be false",
                         context,
@@ -522,7 +522,9 @@ fn check_duplicate_dependencies(
     let mut findings = Vec::new();
     let mut seen = HashSet::new();
 
-    for dep in &info.kconfig_dependencies {
+    // kconfirm-desugar combines a config's dependencies into a single expression,
+    // so there is at most one to consider here.
+    if let Some(dep) = &info.kconfig_dependencies {
         if is_duplicate(&mut seen, dep.to_string()) {
             let message = format!("duplicate dependency on {}", dep.to_string());
             findings.push(Finding {

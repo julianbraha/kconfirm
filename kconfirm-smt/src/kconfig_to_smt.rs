@@ -4,6 +4,7 @@ use nom_kconfig::Symbol;
 use nom_kconfig::attribute::AndExpression;
 use nom_kconfig::attribute::Atom;
 use nom_kconfig::attribute::OrExpression;
+use nom_kconfig::attribute::Term;
 use nom_kconfig::attribute::expression::CompareOperand;
 use nom_kconfig::attribute::r#type::Type;
 use nom_kconfig::symbol::ConstantSymbol;
@@ -21,7 +22,7 @@ pub fn model_kconfig_type(symbol: &str, kconfig_type: &Type) -> Z3Types {
             println!(
                 "TODO: creating a z3 integer for a tristate. make sure we add the [0, 2] range constraint for this later..."
             );
-            Z3Types::Integer(z3_int::new_const(symbol))
+            Z3Types::Bool(z3_bool::new_const(symbol))
         }
 
         Type::String(s) => Z3Types::String(z3_string::new_const(symbol)),
@@ -31,14 +32,14 @@ pub fn model_kconfig_type(symbol: &str, kconfig_type: &Type) -> Z3Types {
             println!(
                 "TODO: creating a z3 integer for a hex. make sure we convert the model's assigned value back to hex representation when writing the config"
             );
-            Z3Types::Integer(z3_int::new_const(symbol))
+            Z3Types::Hex(z3_int::new_const(symbol))
         }
 
         Type::Tristate(_) | Type::DefTristate(_) => {
             println!(
                 "TODO: creating a z3 integer for a tristate. make sure we add the [0, 2] range constraint for this later..."
             );
-            Z3Types::Integer(z3_int::new_const(symbol))
+            Z3Types::Tristate(z3_int::new_const(symbol))
         }
         Type::DefString(_) | Type::DefHex(_) | Type::DefInt(_) => {
             todo!("consider supporting kconfiglib extension")
@@ -224,13 +225,15 @@ pub fn model_kconfig_and_exprs(
 
     let or_terms_asserted_bool: Vec<z3_bool> = z3_bools
         .into_iter()
-        .map(|e| match e {
-            Z3Types::Bool(b) => b,
-            // we are modeling booleans and tristates as integers
-            // so a condition of A AND B is (A > 0) AND (B > 0)
-            Z3Types::Integer(i) => i.gt(z3_int::from_u64(0)),
-            _ => unreachable!("expected to only use AND() on bools"),
-        })
+        .map(
+            |e| e.enabled(), // match e {
+                             // Z3Types::Bool(b) => b,
+                             // we are modeling booleans and tristates as integers
+                             // so a condition of A AND B is (A > 0) AND (B > 0)
+                             // Z3Types::Integer(i) => i.gt(z3_int::from_u64(0)),
+                             // _ => unreachable!("expected to only use AND() on bools"),
+                             // }
+        )
         .collect();
 
     return z3_bool::or(&or_terms_asserted_bool);
@@ -255,11 +258,13 @@ pub fn model_kconfig_and_expr(
 
             let and_terms_bool: Vec<z3_bool> = and_terms
                 .into_iter()
-                .map(|and_term| match and_term {
-                    Z3Types::Integer(i) => i.ge(z3_int::from_i64(1)),
-                    Z3Types::Bool(b) => b,
-                    _ => unreachable!("don't expect to AND nonbools/nontristate"),
-                })
+                .map(
+                    |and_term| and_term.enabled(), //match and_term {
+                                                   //Z3Types::Integer(i) => i.ge(z3_int::from_i64(1)),
+                                                   //Z3Types::Bool(b) => b,
+                                                   //_ => unreachable!("don't expect to AND nonbools/nontristate"),
+                                                   //}
+                )
                 .collect();
 
             return Some(Z3Types::Bool(z3_bool::and(&and_terms_bool)));

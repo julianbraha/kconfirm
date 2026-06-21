@@ -172,7 +172,6 @@ pub struct Context {
     pub arch: Option<String>,
     pub definition_condition: Vec<Expression>,
     pub visibility: Vec<Option<Expression>>,
-    pub dependencies: Vec<Expression>,
     pub in_choice: bool,
 }
 
@@ -182,18 +181,12 @@ impl Context {
             arch,
             definition_condition: vec![],
             visibility: vec![],
-            dependencies: vec![],
             in_choice: false,
         }
     }
 
     fn child(&self) -> Self {
         self.clone()
-    }
-
-    fn with_dep(mut self, dep: Expression) -> Self {
-        self.dependencies.push(dep);
-        self
     }
 
     fn with_visibility(mut self, cond: Option<Expression>) -> Self {
@@ -276,7 +269,10 @@ fn handle_config(
     let mut child_ctx = ctx.child();
 
     let mut config_type = None;
-    let mut kconfig_dependencies = Vec::new();
+    // kconfirm-desugar combines every `depends on` (including those inherited
+    // from enclosing menus/choices/ifs) into a single condition, so a config has
+    // at most one dependency expression here.
+    let mut kconfig_dependencies: Option<Expression> = None;
     let mut kconfig_selects: Vec<Select> = Vec::new();
     let mut kconfig_implies: Vec<Imply> = Vec::new();
     let mut kconfig_ranges = Vec::new();
@@ -420,10 +416,13 @@ fn handle_config(
                     format!("ungrouped dependency {}", &depends_on),
                 );
 
-                // NOTE: ignoring the new `if` condition on the dependency (the `r#if` field):
-                // `depends on X if Y` is treated as `depends on X`.
-                // TODO: desugar this using kconfirm-desugar
-                kconfig_dependencies.push(depends_on.expression);
+                // kconfirm-desugar has already combined all `depends on`
+                // attributes into a single one, so we expect to see at most one.
+                debug_assert!(
+                    kconfig_dependencies.is_none(),
+                    "expected kconfirm-desugar to combine dependencies into one"
+                );
+                kconfig_dependencies = Some(depends_on.expression);
             }
             Select(select) => {
                 attribute_grouping_checker.check(
@@ -532,8 +531,6 @@ fn handle_config(
         }
     }
 
-    // at the end, add the file's cur_dependencies to this var's invididual dependencies.
-    kconfig_dependencies.extend(child_ctx.dependencies.clone());
     symtab.merge_insert_new_solved(
         config_symbol.clone(),
         kconfig_type,
@@ -566,7 +563,7 @@ fn handle_config(
             None => symtab.merge_insert_new_solved(
                 select.symbol,
                 None,
-                Vec::new(),
+                None,
                 Vec::new(),
                 Vec::new(),
                 Vec::new(),
@@ -580,7 +577,7 @@ fn handle_config(
                 symtab.merge_insert_new_solved(
                     select.symbol,
                     None,
-                    Vec::new(),
+                    None,
                     Vec::new(),
                     Vec::new(),
                     Vec::new(),
@@ -614,11 +611,11 @@ fn handle_menu(
     }
 
     for dep in entry.depends_on {
-        // NOTE: ignoring the new `if` condition on the dependency (the `r#if` field):
-        // `depends on X if Y` is treated as `depends on X`.
-        // TODO: desugar this using kconfirm-desugar
-        child_ctx = child_ctx.with_dep(dep.expression.clone());
-        child_ctx = child_ctx.with_visibility(Some(dep.expression)); // not a typo, the config options inside of a menu are only visible if the menu's dependencies are satisfied
+        // The menu's dependencies are already copied onto the contained config
+        // options by kconfirm-desugar, so we only use them for visibility here:
+        // the config options inside a menu are only visible if the menu's
+        // dependencies are satisfied.
+        child_ctx = child_ctx.with_visibility(Some(dep.expression));
     }
 
     let nested_entries = entry.entries;
@@ -639,16 +636,16 @@ fn handle_choice(
     let mut child_ctx = ctx.child();
     child_ctx = child_ctx.in_choice();
 
-    // we are going to add the dependencies of the choice to the dependencies of the entries.
-    //   we start with the dependencies inherited from the file
+    // The choice's dependencies are already copied onto the contained config
+    // options by kconfirm-desugar, so we don't add them to the context here; we
+    // only record them on the ChoiceData for completeness.
     let mut choice_visibility_condition = None;
+    let mut dependencies = Vec::new();
     let mut defaults = Vec::new();
     for attribute in entry.options {
         match attribute {
             DependsOn(depends_on) => {
-                // ignore the optional `if` condition on the dependency (`depends_on.r#if`):
-                // `depends on X if Y` is treated as `depends on X`.
-                child_ctx = child_ctx.with_dep(depends_on.expression);
+                dependencies.push(depends_on.expression);
             }
 
             Default(default) => {
@@ -676,7 +673,7 @@ fn handle_choice(
         //inner_vars: contained_vars,
         arch: child_ctx.arch.clone(),
         visibility: choice_visibility_condition,
-        dependencies: child_ctx.dependencies,
+        dependencies,
         defaults,
     };
     symtab.choices.push(choice_data);
@@ -690,8 +687,10 @@ fn handle_if(
     findings: &mut Vec<Finding>,
 ) {
     let mut child_ctx = ctx.child();
-    child_ctx = child_ctx.with_definition(entry.condition.clone());
-    child_ctx = child_ctx.with_dep(entry.condition);
+    // `if` entries are eliminated by kconfirm-desugar (their condition is pushed
+    // onto the contained config options), so we no longer inherit it as a
+    // dependency; we still record it as a definition condition.
+    child_ctx = child_ctx.with_definition(entry.condition);
     let nested_entries = entry.entries;
 
     recurse_entries(args, symtab, nested_entries, child_ctx, findings);
