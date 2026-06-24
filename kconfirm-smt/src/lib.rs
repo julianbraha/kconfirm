@@ -201,15 +201,6 @@ pub fn model_kconfig(path: PathBuf) {
                     dbg!(&visibility);
                 }
 
-                // TODO: consider a function that converts Option<Z3Types>  hen None into a z3 false.
-
-                fn enabled_or_impossible(condition: Option<Z3Types>) -> z3_bool {
-                    match condition {
-                        Some(c) => c.enabled(),
-                        None => z3_bool::from_bool(false),
-                    }
-                }
-
                 // TODO: only cloning for dbg, remove!
                 match (visibility, z3_dependencies.clone()) {
                     // Visibility:None means that it has no prompt (always invisible)
