@@ -162,11 +162,9 @@ impl TypeInfo {
 /// Kconfig `tristate`, `int`, and `hex` types are all modeled as integers in SMT.
 #[derive(Clone, Debug)]
 pub enum Z3Types {
-    Bool(z3_bool),
-    Tristate(z3_int),
+    Bool(z3_bool), // used for expressions
     String(z3_string),
-    Integer(z3_int),
-    Hex(z3_int),
+    Integer(z3_int), // models kconfig bool type, tristate, hex, and actual kconfig int
 }
 
 impl Z3Types {
@@ -177,24 +175,30 @@ impl Z3Types {
     pub fn enabled(&self) -> z3_bool {
         return match self {
             Z3Types::Bool(b) => b.eq(z3_bool::from_bool(true)),
-            Z3Types::Tristate(t) => t.ge(z3_int::from_u64(1)),
+            Z3Types::Integer(i) => i.ge(z3_int::from_u64(1)),
 
             // NOTE: there is no concept of "enabling" an integer, a condition `i` is always false.
-            Z3Types::Integer(i) => panic!(
-                "attempted to check if an Integer {} config option is enabled! This may be a bug in kconfig!",
-                i
-            ),
+            // BUT, integer options always default to 0 and will take that value when dependencies arent met (similar to disabled).
+            // config options cant depend on an integer itself (only a condition checking the integer value with something specific).
+            // Z3Types::Integer(i) => panic!(
+            //     "attempted to enable Integer {}! This may be a bug in kconfig!",
+            //     i
+            // ),
+            //Z3Types::Integer(i) | Z3Types::Hex(i) => i.ne(z3_int::from_i64(0)),
             // NOTE: there is no concept of "enabling" an integer, a condition `i` is always false.
-            Z3Types::Hex(h) => panic!(
-                "attempted to check if a Hex {} config option is enabled! This may be a bug in kconfig!",
-                h
-            ),
+            // Z3Types::Hex(h) => panic!(
+            //     "attempted to enable Hex {}! This may be a bug in kconfig!",
+            //     h
+            // ),
 
-            // NOTE: there is no concept of "enabling" a string, a condition `S` is always false.
-            Z3Types::String(s) => panic!(
-                "attempted to check if a String {} config option is enabled! This may be a bug in kconfig!",
-                s
-            ),
+            // NOTE: there is no concept of "enabling" a string, a condition `S` (without comparison to a specific value) is always false.
+            // Z3Types::String(s) => panic!(
+            //     "attempted to enable String {}! This may be a bug in kconfig!",
+            //     s
+            // ),
+            // similarly to integer/hex in kconfig, strings don't have a concept of enabled" and options can't depend on strings alone (without a comparison to a specific value).
+            // but, they default to the empty string, and take that value when dependencies not met."
+            Z3Types::String(s) => s.ne(z3_string::from_str(&String::new()).unwrap()),
         };
     }
 }
