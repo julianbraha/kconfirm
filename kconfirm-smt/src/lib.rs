@@ -107,6 +107,13 @@ pub fn model_kconfig(path: PathBuf) {
         println!("enabling current symbol:{:?}", z3_type);
         let cur_symbol_enabled_z3 = z3_type.enabled();
 
+        // we're going to set all of these in the upcoming loop
+        let mut visibility_z3 = None; // if this remains None (never gets set to Some) then it's never visible
+        let mut dependencies_z3 = None; // if this remains None then it has no dependencies (always sat)
+        let mut selected_by_z3 = Vec::new(); // if this remains None then it has no selectors
+        let mut implied_by_z3 = None; // if this remains None then it has no impliors
+        let mut defaults_z3 = None; // if this remains None then it has no defaults
+
         // here we add the constraint that this option (symbol) implies whatever it selects in kconfig
         //
         // this loop is for handling all of the current config option's attributes
@@ -201,37 +208,32 @@ pub fn model_kconfig(path: PathBuf) {
                     dbg!(&visibility);
                 }
 
-                // TODO: only cloning for dbg, remove!
-                match (visibility, z3_dependencies.clone()) {
+                match visibility {
                     // Visibility:None means that it has no prompt (always invisible)
-                    // dependencies:None means that it has no dependencies (always satisfied)
-                    // - TODO: affected by implies and defaults
-                    (None, None) => {
-                        println!("WHY IS z3_dependencies AN Option::None:");
-                        dbg!(z3_dependencies);
-                        //todo!("affected by implies and defaults");
-                        // do nothing
-                    }
-
-                    // add to all_enabled_conditions when visible && deps
-                    (Some(vis), Some(dep)) => {
-                        let vis_z3 = kconfig_to_smt::model_kconfig_or_expr(&new_symtab, vis); //&symbol_table.raw, vis);
-
-                        let visible_and_deps = z3_bool::and(&[vis_z3, dep]);
-                        all_enabled_conditions.push(visible_and_deps);
-                    }
 
                     // Visibility:None means that it has no prompt (always invisible)
                     // - TODO: affected by implies and defaults
-                    (None, Some(dep)) => {
-                        println!("enabling dependencies:{:?}", dep);
-                        //todo!("affected by implies and defaults");
+                    None => {
+                        // visibility stays none for now...
+                        // NOTE: the prompt could be in a second partial definition in the next iteration of the loop
                     }
-                    // add to all_enabled_conditions when visible (it has no dependencies)
-                    (Some(vis), None) => {
-                        let vis_z3 = kconfig_to_smt::model_kconfig_or_expr(&new_symtab, vis); //&symbol_table.raw, vis);
 
+                    Some(vis) => {
+                        let vis_z3 = kconfig_to_smt::model_kconfig_or_expr(&new_symtab, vis); //&symbol_table.raw, vis);
+                        visibility_z3 = Some(vis_z3.clone());
                         all_enabled_conditions.push(vis_z3);
+                    }
+                }
+
+                match z3_dependencies {
+                    // dependencies:None means that it has no dependencies (always satisfied)
+                    None => {
+                        // dependencies stays none for now...
+                        // NOTE: the dependencies could be in a second partial definition in the next iteration of the loop
+                    }
+
+                    Some(dep) => {
+                        dependencies_z3 = Some(dep);
                     }
                 }
 
@@ -274,7 +276,7 @@ pub fn model_kconfig(path: PathBuf) {
                     // conditional select: combine the selector's enablement condition with select condition
                     if let Some(cond) = select_condition {
                         let select_condition_z3 = model_kconfig_or_expr(&new_symtab, cond.clone()); //&symbol_table.raw, cond.clone());
-
+                        selected_by_z3.push(select_condition_z3.clone());
                         all_enabled_conditions.push(z3_bool::and(&[
                             selector_enabled.clone(),
                             select_condition_z3, // actually we expect this to be a z3_bool
