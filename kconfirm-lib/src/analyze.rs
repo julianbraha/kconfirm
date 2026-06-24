@@ -9,7 +9,10 @@ use crate::{
         Finding,
         Severity, //
     },
-    symbol_table::ChoiceData, //
+    symbol_table::{
+        unconditional_visibility,
+        ChoiceData, //
+    },
     AnalysisArgs,
     Check,
     SymbolTable,
@@ -171,7 +174,6 @@ impl DeadLinkChecker {
 pub struct Context {
     pub arch: Option<String>,
     pub definition_condition: Vec<Expression>,
-    pub visibility: Vec<Option<Expression>>,
     pub in_choice: bool,
 }
 
@@ -180,18 +182,12 @@ impl Context {
         Context {
             arch,
             definition_condition: vec![],
-            visibility: vec![],
             in_choice: false,
         }
     }
 
     fn child(&self) -> Self {
         self.clone()
-    }
-
-    fn with_visibility(mut self, cond: Option<Expression>) -> Self {
-        self.visibility.push(cond);
-        self
     }
 
     fn with_definition(mut self, cond: Expression) -> Self {
@@ -277,7 +273,9 @@ fn handle_config(
     let mut kconfig_implies: Vec<Imply> = Vec::new();
     let mut kconfig_ranges = Vec::new();
     let mut kconfig_defaults = Vec::new();
-    let mut found_prompt = false;
+    // The visibility condition comes solely from the config's prompt: `None` if it has no
+    // prompt, `Some(y)` for an unconditional prompt, or `Some(cond)` for a `prompt ... if cond`.
+    let mut visibility: Option<Expression> = None;
 
     debug!("attributes are: {:?}", &entry.attributes);
     /*
@@ -309,15 +307,7 @@ fn handle_config(
                         format!("ungrouped default {}", db),
                     );
                 }
-                Type::Bool(prompt) => {
-                    if prompt.is_some() {
-                        found_prompt = true;
-                    }
-
-                    if let Some(c) = kconfig_type.clone().r#if {
-                        child_ctx = child_ctx.with_visibility(Some(c));
-                    }
-
+                Type::Bool(_prompt) => {
                     config_type = Some(kconfig_type);
                 }
 
@@ -338,55 +328,19 @@ fn handle_config(
                         r#if: kconfig_type.clone().r#if,
                     };
 
-                    if let Some(c) = kconfig_type.clone().r#if {
-                        child_ctx = child_ctx.with_visibility(Some(c));
-                    }
-
                     kconfig_defaults.push(default_attribute);
                     config_type = Some(kconfig_type);
                 }
-                Type::Tristate(unconditional_prompt) => {
-                    if unconditional_prompt.is_some() {
-                        found_prompt = true;
-                    }
-
-                    if let Some(c) = kconfig_type.clone().r#if {
-                        child_ctx = child_ctx.with_visibility(Some(c));
-                    }
-
-                    config_type = Some(kconfig_type.clone())
-                }
-                Type::Hex(unconditional_prompt) => {
-                    if unconditional_prompt.is_some() {
-                        found_prompt = true;
-                    }
-
-                    if let Some(c) = kconfig_type.clone().r#if {
-                        child_ctx = child_ctx.with_visibility(Some(c));
-                    }
-
+                Type::Tristate(_prompt) => {
                     config_type = Some(kconfig_type);
                 }
-                Type::Int(unconditional_prompt) => {
-                    if unconditional_prompt.is_some() {
-                        found_prompt = true;
-                    }
-
-                    if let Some(c) = kconfig_type.clone().r#if {
-                        child_ctx = child_ctx.with_visibility(Some(c));
-                    }
-
+                Type::Hex(_prompt) => {
                     config_type = Some(kconfig_type);
                 }
-                Type::String(unconditional_prompt) => {
-                    if unconditional_prompt.is_some() {
-                        found_prompt = true;
-                    }
-
-                    if let Some(c) = kconfig_type.clone().r#if {
-                        child_ctx = child_ctx.with_visibility(Some(c));
-                    }
-
+                Type::Int(_prompt) => {
+                    config_type = Some(kconfig_type);
+                }
+                Type::String(_prompt) => {
                     config_type = Some(kconfig_type);
                 }
                 Type::DefInt(_) | Type::DefHex(_) | Type::DefString(_) => {
@@ -483,14 +437,12 @@ fn handle_config(
                 symtab.modules_option = Some(config_symbol.clone());
             }
 
-            // the prompt's option `if` determines "visibility"
+            // the prompt determines "visibility": an unconditional prompt is always visible (`y`),
+            // while a `prompt ... if cond` is visible exactly when `cond` holds.
             Prompt(prompt) => {
                 // TODO: once we have SMT solving, we can also check if the prompt condition is always true or never true (and therefore, effectively unconditional)
 
-                found_prompt = true;
-                if let Some(c) = prompt.r#if {
-                    child_ctx = child_ctx.with_visibility(Some(c));
-                }
+                visibility = Some(prompt.r#if.unwrap_or_else(unconditional_visibility));
             }
             Transitional => {
                 // doing nothing for transitional right now
@@ -503,10 +455,6 @@ fn handle_config(
                 }
             }
         }
-    }
-
-    if !found_prompt {
-        child_ctx = child_ctx.with_visibility(None);
     }
 
     // there can be multiple entries that get merged. so we need to do the same for our symtab.
@@ -538,9 +486,10 @@ fn handle_config(
         //z3_dependency,
         kconfig_ranges,
         kconfig_defaults,
-        child_ctx.visibility.clone(),
+        visibility,
         child_ctx.arch.clone(),
         child_ctx.definition_condition.clone(),
+        None,
         None,
         kconfig_selects
             .clone()
@@ -548,14 +497,12 @@ fn handle_config(
             .map(|sel| (sel.symbol, sel.r#if))
             .collect(),
         kconfig_implies
+            .clone()
             .into_iter()
             .map(|imply| (imply.symbol.to_string(), imply.r#if))
             .collect(),
     );
     // TODO: file a github issue, imply can never imply a constant (this is technically parsing incorrectly)
-
-    // TODO: when SMT solving, we may need to keep track of the implies the same way we keep track of selects,
-    //       in cases when the implied config option is non-visible
 
     // need to add the select condition to the definedness condition if it exists
     for select in kconfig_selects {
@@ -566,10 +513,11 @@ fn handle_config(
                 None,
                 Vec::new(),
                 Vec::new(),
-                Vec::new(),
+                None,
                 child_ctx.arch.clone(),
                 child_ctx.definition_condition.clone(),
                 Some((config_symbol.clone(), None)),
+                None,
                 Vec::new(),
                 Vec::new(),
             ),
@@ -599,9 +547,7 @@ fn handle_menu(
     ctx: &Context,
     findings: &mut Vec<Finding>,
 ) {
-    // menus can set the visibility of their menu items
-
-    let mut child_ctx = ctx.child();
+    let child_ctx = ctx.child();
 
     if !entry.depends_on.is_empty() {
         debug!(
@@ -610,14 +556,9 @@ fn handle_menu(
         );
     }
 
-    for dep in entry.depends_on {
-        // The menu's dependencies are already copied onto the contained config
-        // options by kconfirm-desugar, so we only use them for visibility here:
-        // the config options inside a menu are only visible if the menu's
-        // dependencies are satisfied.
-        child_ctx = child_ctx.with_visibility(Some(dep.expression));
-    }
-
+    // The menu's dependencies are already copied onto the contained config options by
+    // kconfirm-desugar, and a config option's visibility now comes solely from its own
+    // prompt, so the menu contributes nothing to the context here.
     let nested_entries = entry.entries;
 
     recurse_entries(args, symtab, nested_entries, child_ctx.clone(), findings);
@@ -652,12 +593,10 @@ fn handle_choice(
                 defaults.push(default);
             }
 
-            // the prompt's `if` determines visibility
+            // the prompt's `if` determines the choice's own visibility; contained config
+            // options derive their visibility from their own prompts, not the choice's.
             Prompt(prompt) => {
                 choice_visibility_condition = prompt.r#if;
-                if let Some(i) = choice_visibility_condition.clone() {
-                    child_ctx = child_ctx.with_visibility(Some(i));
-                }
             }
             _ => debug!("skipping attribute {:?} for choice", attribute),
         }

@@ -1,16 +1,23 @@
 // SPDX-License-Identifier: GPL-2.0-only
 use log::debug;
+use nom_kconfig::Symbol;
 use nom_kconfig::attribute::{
+    AndExpression,
+    Atom,
     DefaultAttribute,
     Expression,
     OrExpression,
     Range,
+    Term,
     r#type::Type, //
 };
+use nom_kconfig::symbol::ConstantSymbol;
+use nom_kconfig::tristate::Tristate;
 use std::collections::{
     HashMap,
     hash_map, //
 };
+use std::str::FromStr;
 use z3::ast::Bool as z3_bool;
 use z3::ast::Int as z3_int;
 use z3::ast::String as z3_string;
@@ -18,6 +25,15 @@ use z3::ast::String as z3_string;
 type KconfigSymbol = String;
 type Arch = Option<String>;
 type Cond = Option<Expression>;
+
+/// The visibility condition of an unconditionally-visible `config` option (one with an
+/// unconditional prompt): the constant `y`. Used as the `Some(true)` value of
+/// [`AttributeDef::visibility`].
+pub fn unconditional_visibility() -> Expression {
+    OrExpression::Term(AndExpression::Term(Term::Atom(Atom::Symbol(
+        Symbol::Constant(ConstantSymbol::Tristate(Tristate::Yes)),
+    ))))
+}
 
 /// All of the type info of a Kconfig symbol. Since `config` options can have their attributes
 /// spread out across multiple definitions, and can also be redefined in each architecture, the
@@ -75,7 +91,7 @@ impl TypeInfo {
         raw_constraints: Option<OrExpression>,
         kconfig_ranges: Vec<Range>,
         kconfig_defaults: Vec<DefaultAttribute>,
-        visibility: Vec<Option<OrExpression>>,
+        visibility: Option<OrExpression>,
         arch: Option<String>,
         definition_condition: Vec<OrExpression>,
         selected_by: Option<(KconfigSymbol, Cond)>,
@@ -184,7 +200,7 @@ impl Z3Types {
 ///     kconfig_dependencies: None,
 ///     kconfig_ranges: vec![],
 ///     kconfig_defaults: vec![],
-///     visibility: vec![],
+///     visibility: None,
 ///     selects: vec![],
 ///     implies: vec![],
 /// };
@@ -200,9 +216,10 @@ pub struct AttributeDef {
     pub kconfig_ranges: Vec<Range>,
     /// The `default` attributes of the `config` option. Order is preserved from the source.
     pub kconfig_defaults: Vec<DefaultAttribute>,
-    /// The visibility condition of the `config` option. Need to be logically AND'd to get the
-    /// entire condition.
-    pub visibility: Vec<Option<OrExpression>>,
+    /// The visibility condition of the `config` option, derived solely from its prompt:
+    /// `None` if it has no prompt, `Some(`[`unconditional_visibility`]`())` (i.e. `y`) for an
+    /// unconditional prompt, or `Some(cond)` for a `prompt ... if cond`.
+    pub visibility: Option<OrExpression>,
     /// The `select` attributes of the `config` option. Represents reverse dependencies in Kconfig.
     pub selects: Vec<(KconfigSymbol, Cond)>,
     /// The `imply` attributes of the `config` option.
@@ -294,7 +311,7 @@ impl SymbolTable {
         raw_constraints: Option<OrExpression>,
         kconfig_ranges: Vec<Range>,
         kconfig_defaults: Vec<DefaultAttribute>,
-        visibility: Vec<Option<OrExpression>>,
+        visibility: Option<OrExpression>,
         arch: Arch,
         definition_condition: Vec<OrExpression>,
         selected_by: Option<(KconfigSymbol, Cond)>,

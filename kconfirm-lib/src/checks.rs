@@ -5,6 +5,7 @@ use crate::{
         Severity, //
     },
     symbol_table::{
+        unconditional_visibility,
         AttributeDef,
         TypeInfo, //
     },
@@ -474,8 +475,10 @@ pub fn check_select_visible(var_symbol: &str, info: &TypeInfo) -> Vec<Finding> {
                     // so let's check if it's defined for all archs (arch-independent)
                     if let Some(no_arch_attribute_def) = info.attribute_defs.get(&None) {
                         for (if_conditions, attributes) in no_arch_attribute_def {
-                            if if_conditions.is_empty() && attributes.visibility.is_empty() {
-                                // empty visiblity means that it is unconditionally visible, within the current arch (assuming arch is not `None`)
+                            if if_conditions.is_empty()
+                                && attributes.visibility == Some(unconditional_visibility())
+                            {
+                                // an unconditional prompt means it is unconditionally visible, within the current arch (assuming arch is not `None`)
 
                                 findings.push(Finding {
                                     severity: Severity::Warning,
@@ -490,8 +493,10 @@ pub fn check_select_visible(var_symbol: &str, info: &TypeInfo) -> Vec<Finding> {
                 }
                 Some(cur_arch_attribute_def) => {
                     for (if_conditions, attributes) in cur_arch_attribute_def {
-                        if if_conditions.is_empty() && attributes.visibility.is_empty() {
-                            // empty visiblity means that it is unconditionally visible, within the current arch (assuming arch is not `None`)
+                        if if_conditions.is_empty()
+                            && attributes.visibility == Some(unconditional_visibility())
+                        {
+                            // an unconditional prompt means it is unconditionally visible, within the current arch (assuming arch is not `None`)
 
                             findings.push(Finding {
                                 severity: Severity::Warning,
