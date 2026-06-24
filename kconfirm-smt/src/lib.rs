@@ -112,13 +112,20 @@ pub fn model_kconfig(path: PathBuf) {
         let mut dependencies_z3 = None; // if this remains None then it has no dependencies (always sat)
         let mut selected_by_z3 = Vec::new(); // if this remains None then it has no selectors
         let mut implied_by_z3 = Vec::new(); // if this remains None then it has no impliors
-        //let mut defaults_z3 = None; // if this remains None then it has no defaults
+        let mut defaults_z3 = Vec::new(); // if this remains None then it has no defaults
 
         // here we add the constraint that this option (symbol) implies whatever it selects in kconfig
         //
         // this loop is for handling all of the current config option's attributes
         for (arch, config_definitions) in type_info.attribute_defs {
             for (config_definition_condition, attributes) in config_definitions {
+                let defaults = attributes.kconfig_defaults;
+                todo!("start modeling defaults and their conditions:
+                    1. model each default+condition as z3 logic
+                    2. push the modeled default to the `defaults_z3` vector
+                    NOTE: can check how the conditions are handled for the implies and selects loops below!
+                    ");
+
                 /*
                  * enabling the option implies its dependencies are satisfied(and it's visible OR that's a default) OR it's selected
                  *
