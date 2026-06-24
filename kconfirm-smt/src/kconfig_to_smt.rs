@@ -52,10 +52,13 @@ fn model_kconfig_bool_comparison(
     left: z3_bool,
     comparison: nom_kconfig::attribute::CompareOperator,
     right: z3_bool,
-) -> z3_bool {
+) -> z3_int {
+    let two = z3_int::from_i64(2);
+    let zero = z3_int::from_i64(0);
+
     match comparison {
-        nom_kconfig::attribute::CompareOperator::Equal => left.eq(right),
-        nom_kconfig::attribute::CompareOperator::NotEqual => left.ne(right),
+        nom_kconfig::attribute::CompareOperator::Equal => left.eq(right).ite(&two, &zero),
+        nom_kconfig::attribute::CompareOperator::NotEqual => left.ne(right).ite(&two, &zero),
         _ => panic!(
             "booleans are being compared like numbers {} and {}",
             left, right
@@ -68,14 +71,17 @@ fn model_kconfig_int_comparison(
     left: z3_int,
     comparison: nom_kconfig::attribute::CompareOperator,
     right: z3_int,
-) -> z3_bool {
+) -> z3_int {
+    let two = z3_int::from_i64(2);
+    let zero = z3_int::from_i64(0);
+
     match comparison {
-        nom_kconfig::attribute::CompareOperator::GreaterThan => left.gt(right),
-        nom_kconfig::attribute::CompareOperator::Equal => left.eq(right),
-        nom_kconfig::attribute::CompareOperator::GreaterOrEqual => left.ge(right),
-        nom_kconfig::attribute::CompareOperator::NotEqual => left.ne(right),
-        nom_kconfig::attribute::CompareOperator::LowerThan => left.lt(right),
-        nom_kconfig::attribute::CompareOperator::LowerOrEqual => left.le(right),
+        nom_kconfig::attribute::CompareOperator::GreaterThan => left.gt(right).ite(&two, &zero),
+        nom_kconfig::attribute::CompareOperator::Equal => left.eq(right).ite(&two, &zero),
+        nom_kconfig::attribute::CompareOperator::GreaterOrEqual => left.ge(right).ite(&two, &zero),
+        nom_kconfig::attribute::CompareOperator::NotEqual => left.ne(right).ite(&two, &zero),
+        nom_kconfig::attribute::CompareOperator::LowerThan => left.lt(right).ite(&two, &zero),
+        nom_kconfig::attribute::CompareOperator::LowerOrEqual => left.le(right).ite(&two, &zero),
     }
 }
 
@@ -84,33 +90,39 @@ fn model_kconfig_str_comparison(
     left: z3_string,
     comparison: nom_kconfig::attribute::CompareOperator,
     right: z3_string,
-) -> z3_bool {
-    match comparison {
-        nom_kconfig::attribute::CompareOperator::Equal => left.eq(right),
+) -> z3_int {
+    let two = z3_int::from_i64(2);
+    let zero = z3_int::from_i64(0);
 
-        nom_kconfig::attribute::CompareOperator::NotEqual => left.ne(right),
+    match comparison {
+        nom_kconfig::attribute::CompareOperator::Equal => left.eq(right).ite(&two, &zero),
+
+        nom_kconfig::attribute::CompareOperator::NotEqual => left.ne(right).ite(&two, &zero),
         _ => unreachable!("assuming no other kinds of string comparison than = and !="),
     }
 }
 
 // this thing may need to return a boolean expression, but it could also be another type.
 // returns a None if we don't want to handle that type of expression (caller should effectively ignore Nones)
-fn model_kconfig_atom(symbol_table: &HashMap<String, TypeInfo>, atom: Atom) -> Z3Types {
+fn model_kconfig_atom(symbol_table: &HashMap<String, TypeInfo>, atom: Atom) -> z3_int {
     match atom {
         // descend the parse tree.
         // models a constant value or config option.
-        Atom::Symbol(sym) => return model_kconfig_symbol(symbol_table, sym),
+        Atom::Symbol(sym) => {
+            let symbol = model_kconfig_symbol(symbol_table, sym);
+            match symbol {
+                Z3Types::Integer(i) => i,
+                _ => panic!(
+                    "I think this expression is just checking the value of a string option? which shouldn't happen..."
+                ),
+            }
+        }
 
         // some sort of expression
-        Atom::Parenthesis(parens_expr) => match *parens_expr {
-            OrExpression::Term(term) => {
-                return Z3Types::Bool(model_kconfig_and_expr(symbol_table, term));
-            }
-            OrExpression::Expression(or_expr) => {
-                let expression_bool: z3_bool = model_kconfig_and_exprs(symbol_table, or_expr);
-                return Z3Types::Bool(expression_bool);
-            }
-        },
+        Atom::Parenthesis(parens_expr) => {
+            return model_kconfig_or_expr(symbol_table, *parens_expr);
+        }
+
         Atom::Compare(compare) => {
             let left = match compare.left {
                 CompareOperand::Symbol(sym) => model_kconfig_symbol(symbol_table, sym),
@@ -129,15 +141,15 @@ fn model_kconfig_atom(symbol_table: &HashMap<String, TypeInfo>, atom: Atom) -> Z
 
             match (left, right) {
                 (Z3Types::Bool(b_left), Z3Types::Bool(b_right)) => {
-                    return Z3Types::Bool(model_kconfig_bool_comparison(b_left, op, b_right));
+                    return model_kconfig_bool_comparison(b_left, op, b_right);
                 }
 
                 (Z3Types::Integer(i_left), Z3Types::Integer(i_right)) => {
-                    return Z3Types::Bool(model_kconfig_int_comparison(i_left, op, i_right));
+                    return model_kconfig_int_comparison(i_left, op, i_right);
                 }
 
                 (Z3Types::String(s_left), Z3Types::String(s_right)) => {
-                    return Z3Types::Bool(model_kconfig_str_comparison(s_left, op, s_right));
+                    return model_kconfig_str_comparison(s_left, op, s_right);
                 }
 
                 (_left, _right) => panic!("attempting to compare: {:?} and {:?}", _left, _right),
@@ -156,7 +168,7 @@ fn model_kconfig_atom(symbol_table: &HashMap<String, TypeInfo>, atom: Atom) -> Z
 /// - For constants:
 ///   1. Strings are strings
 ///   2. Integers an Hex are integers
-///   3. Tristates and booleans are bounded integers (0 <= b <= 1 for boolean b and 0 <= t <= 2 for tristate t)
+///   3. Tristates and booleans are bounded integers (0 <= b <= 2 and b!=1 for boolean b and 0 <= t <= 2 for tristate t)
 ///
 /// NOTE: this will retrieve type information from the symbol table for config option identifiers.
 ///       Expects all symbols to have been inserted into the symbol table already.
@@ -180,13 +192,14 @@ fn model_kconfig_constant(c: ConstantSymbol) -> Z3Types {
         }
         ConstantSymbol::String(s) => Z3Types::String(z3_string::from_str(&s).unwrap()),
         ConstantSymbol::Boolean(b) => match b {
-            true => Z3Types::Integer(z3_int::from_u64(1)),
-            false => Z3Types::Integer(z3_int::from_u64(0)),
+            true => Z3Types::Integer(z3_int::from_i64(2)),
+            // boolean doesn't support m; there is no 1
+            false => Z3Types::Integer(z3_int::from_i64(0)),
         },
         ConstantSymbol::Tristate(t) => match t {
-            Tristate::No => Z3Types::Integer(z3_int::from_u64(0)),
-            Tristate::Yes => Z3Types::Integer(z3_int::from_u64(1)),
-            Tristate::Module => Z3Types::Integer(z3_int::from_u64(2)),
+            Tristate::No => Z3Types::Integer(z3_int::from_i64(0)),
+            Tristate::Yes => Z3Types::Integer(z3_int::from_i64(2)),
+            Tristate::Module => Z3Types::Integer(z3_int::from_i64(1)),
         },
     }
 }
@@ -215,7 +228,7 @@ fn model_kconfig_identifier(symbol_table: &HashMap<String, TypeInfo>, sym: &str)
 pub fn model_kconfig_or_expr(
     symbol_table: &HashMap<String, TypeInfo>,
     or_expr: OrExpression,
-) -> z3_bool {
+) -> z3_int {
     match or_expr {
         OrExpression::Term(term) => {
             return model_kconfig_and_expr(symbol_table, term);
@@ -230,13 +243,16 @@ pub fn model_kconfig_or_expr(
 pub fn model_kconfig_and_exprs(
     symbol_table: &HashMap<String, TypeInfo>,
     or_expr: Vec<AndExpression>,
-) -> z3_bool {
-    let z3_bools: Vec<z3_bool> = or_expr
+) -> z3_int {
+    let z3_ints: Vec<z3_int> = or_expr
         .into_iter()
         .map(|and_expr| model_kconfig_and_expr(symbol_table, and_expr))
         .collect();
 
-    return z3_bool::or(&z3_bools);
+    // calculates the max (smt integer equivalent to logical-OR)
+    return z3_ints
+        .iter()
+        .fold(z3_int::from_i64(0), |acc, x| acc.ge(x).ite(&acc, x));
 }
 
 /// Models a Kconfig AND expression as one of two cases:
@@ -245,18 +261,21 @@ pub fn model_kconfig_and_exprs(
 pub fn model_kconfig_and_expr(
     symbol_table: &HashMap<String, TypeInfo>,
     and_expr: AndExpression,
-) -> z3_bool {
+) -> z3_int {
     return match and_expr {
         // this not really an AND. it is case 1
         AndExpression::Term(term) => model_kconfig_term(symbol_table, term),
         // this is a true AND. it is case 2
         AndExpression::Expression(terms) => {
-            let and_terms: Vec<z3_bool> = terms
+            let and_terms: Vec<z3_int> = terms
                 .into_iter()
                 .map(|term| model_kconfig_term(symbol_table, term))
                 .collect();
-
-            return z3_bool::and(&and_terms);
+            // DEPENDS ON FOO
+            // gets the min of the terms
+            return and_terms
+                .iter()
+                .fold(z3_int::from_i64(2), |acc, x| acc.le(x).ite(&acc, x)); //and_terms.//std::cmp::min(&and_terms);
         }
     };
 }
@@ -267,26 +286,23 @@ pub fn model_kconfig_and_expr(
 fn model_kconfig_term(
     symbol_table: &HashMap<String, TypeInfo>,
     term: nom_kconfig::attribute::Term,
-) -> z3_bool {
+) -> z3_int {
     // nom-kconfig terms can be identifier, or !identifier
     match term {
         // just return the symbol table entry, if it's not NOT'd
         nom_kconfig::attribute::Term::Atom(a) => {
-            let symtab_result = model_kconfig_atom(symbol_table, a);
-
-            return symtab_result.enabled();
+            return model_kconfig_atom(symbol_table, a);
         }
 
         nom_kconfig::attribute::Term::Not(n) => {
-            match model_kconfig_atom(symbol_table, n)/* return `None` if not in symtab */ {
-                // if there was actually a bool, we NOT it
-                Z3Types::Bool(bool) => return bool.not(),
+            let i = model_kconfig_atom(symbol_table, n);
+            // !TRISTATE is modeled here as tristate=0 (tristates are modeled as integers in SMT)
 
-                // !TRISTATE is modeled here as tristate=0 (tristates are modeled as integers in SMT)
-                 Z3Types::Integer(i) => return i.eq(z3_int::from_i64(0)),
+            // !B where B is bool: <2?
 
-                _ => unreachable!("assuming that nonbooleans cannot be NOT'd"),
-            }
+            let two = z3_int::from_i64(2);
+            let negate_tristate = z3_int::sub(&[two, i]);
+            return negate_tristate; //i.eq(z3_int::from_i64(0))},
         }
     }
 }
