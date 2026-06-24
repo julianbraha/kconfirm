@@ -1,5 +1,7 @@
 use kconfirm_desugar::desugar_kconfig;
+use kconfirm_lib::Z3Types;
 use nom_kconfig::{Entry, KconfigInput, entry::Source, parse_kconfig};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use z3::DeclKind::PbAtLeast;
 use z3::Solver;
@@ -71,19 +73,39 @@ pub fn model_kconfig(path: PathBuf) {
 
     let solver = Solver::new();
 
+    let mut new_symtab = HashMap::new();
+
     // convert the kconfig types to z3 types
     for (symbol, kconfig_type_info) in &mut symbol_table.raw {
         //let kconfig_type = kconfig_type_info.kconfig_type;
 
         if let Some(t) = &kconfig_type_info.kconfig_type {
             let z3_type = model_kconfig_type(symbol, t);
-            kconfig_type_info.z3_type = Some(z3_type);
+            //kconfig_type_info.z3_type = Some(z3_type);
+
+            let mut new_kconfig_type_info = kconfig_type_info.clone();
+            new_kconfig_type_info.z3_type = Some(z3_type);
+            new_symtab.insert(symbol.clone(), new_kconfig_type_info);
+        } else {
+            println!("symbol doesn't have a kconfig type!");
+            //panic!("symbol doesn't have a kconfig type:{}", symbol);
+            //symbol_table.raw.remove(symbol);
         }
     }
 
+    drop(symbol_table.raw);
+
     // convert the dependencies to z3 expressions
-    for (symbol, type_info) in symbol_table.raw.clone() {
+    for (symbol, type_info) in new_symtab.clone() {
+        //symbol_table.raw.clone() {
         let mut all_enabled_conditions: Vec<z3_bool> = Vec::new();
+
+        let z3_type = type_info
+            .z3_type
+            .expect("already converted all kconfig types to z3");
+
+        println!("enabling current symbol:{:?}", z3_type);
+        let cur_symbol_enabled_z3 = z3_type.enabled();
 
         // here we add the constraint that this option (symbol) implies whatever it selects in kconfig
         //
@@ -112,41 +134,54 @@ pub fn model_kconfig(path: PathBuf) {
 
                 let selects = attributes.selects;
 
-                let selector_enabled = type_info
-                    .z3_type
-                    .expect("already converted all kconfig types to z3")
-                    .enabled();
+                // just an alias for the selector-selectee context
+                let selector_enabled = cur_symbol_enabled_z3.clone();
 
                 for (selectee, select_condition) in selects {
-                    match symbol_table.raw.get(&selectee) {
-                        None => panic!(
-                            "selectee does not exist under any architecture: {}",
-                            selectee
-                        ),
+                    match new_symtab.get(&selectee) {
+                        // symbol_table.raw.get(&selectee) {
+                        None => {
+                            println!("selectee does not exist: {}", selectee);
+                            continue; // onto the next selectee
+                        }
                         Some(selectee_type_info) => {
-                            let selectee_enabled = selectee_type_info
-                                .z3_type
-                                .as_ref()
-                                .expect("already converted all kconfig types to z3")
-                                .enabled();
-
-                            // conditional select
-                            if let Some(sel_cond) = select_condition {
-                                let select_condition_z3 =
-                                    model_kconfig_or_expr(&symbol_table.raw, sel_cond)
-                                        .expect("dunno why this is an option")
-                                        .enabled();
-
-                                let selector_enabled_and_select_condition_true =
-                                    z3_bool::and(&[selector_enabled.clone(), select_condition_z3]);
-
-                                solver.assert(
-                                    selector_enabled_and_select_condition_true
-                                        .implies(selectee_enabled),
+                            // the selectee exists (is defined for this arch, is not a dangling reference):
+                            if let Some(selectee_z3) = selectee_type_info.z3_type.as_ref() {
+                                println!(
+                                    "enabling selectee:{:?}",
+                                    selectee_type_info.z3_type.as_ref()
                                 );
+                                let selectee_enabled = selectee_z3.enabled();
+                                // conditional select
+                                if let Some(sel_cond) = select_condition {
+                                    println!(
+                                        "enabling select_condition:{:?}",
+                                        model_kconfig_or_expr(&new_symtab, sel_cond.clone())//&symbol_table.raw, sel_cond.clone())
+                                            .expect("dunno why this is an option")
+                                    );
+                                    let select_condition_z3 = model_kconfig_or_expr(
+                                        &new_symtab,
+                                        sel_cond,
+                                    ) //&symbol_table.raw, sel_cond)
+                                    .expect("dunno why this is an option")
+                                    .enabled();
+
+                                    let selector_enabled_and_select_condition_true =
+                                        z3_bool::and(&[
+                                            selector_enabled.clone(),
+                                            select_condition_z3,
+                                        ]);
+
+                                    solver.assert(
+                                        selector_enabled_and_select_condition_true
+                                            .implies(selectee_enabled),
+                                    );
+                                } else {
+                                    // unconditional select
+                                    solver.assert(selector_enabled.implies(selectee_enabled));
+                                }
                             } else {
-                                // unconditional select
-                                solver.assert(selector_enabled.implies(selectee_enabled));
+                                continue; // onto the next selectee
                             }
                         }
                     }
@@ -155,13 +190,10 @@ pub fn model_kconfig(path: PathBuf) {
                 // convert the kconfig dependencies into a z3 formula.
                 // kconfirm-desugar combines all dependencies into a single
                 // condition, so there is at most one here.
-                let z3_dependencies = attributes
-                    .kconfig_dependencies
-                    .as_ref()
-                    .and_then(|deps| {
-                        kconfig_to_smt::model_kconfig_or_expr(&symbol_table.raw, deps.to_owned())
-                    })
-                    .expect("why is this an option");
+                dbg!(&attributes.kconfig_dependencies);
+                let z3_dependencies = attributes.kconfig_dependencies.as_ref().and_then(|deps| {
+                    kconfig_to_smt::model_kconfig_or_expr(&new_symtab, deps.to_owned()) //&symbol_table.raw, deps.to_owned())
+                });
 
                 // get the selected-by constraint (we will OR-this with the dependencies)
 
@@ -172,18 +204,67 @@ pub fn model_kconfig(path: PathBuf) {
                  * 3. is affected by choice and menu (i think)
                  */
                 let visibility = attributes.visibility;
-                todo!("can a desugaring pass simplify visibility to a single condition?");
 
-                //let visible_and_depends_sat =
+                if visibility.is_none() {
+                    dbg!(&visibility);
+                }
+
+                // TODO: consider a function that converts Option<Z3Types>  hen None into a z3 false.
+
+                fn enabled_or_impossible(condition: Option<Z3Types>) -> z3_bool {
+                    match condition {
+                        Some(c) => c.enabled(),
+                        None => z3_bool::from_bool(false),
+                    }
+                }
+
+                // TODO: only cloning for dbg, remove!
+                match (visibility, z3_dependencies.clone()) {
+                    // Visibility:None means that it has no prompt (always invisible)
+                    // dependencies:None means that it has no dependencies (always satisfied)
+                    // - TODO: affected by implies and defaults
+                    (None, None) => {
+                        println!("WHY IS z3_dependencies AN Option::None:");
+                        dbg!(z3_dependencies);
+                        //todo!("affected by implies and defaults");
+                        // do nothing
+                    }
+
+                    // add to all_enabled_conditions when visible && deps
+                    (Some(vis), Some(dep)) => {
+                        println!("enabling dependencies:{:?}", dep);
+                        let deps_sat = dep.enabled();
+
+                        let vis_z3 = kconfig_to_smt::model_kconfig_or_expr(&new_symtab, vis); //&symbol_table.raw, vis);
+                        let vis_z3_cond = enabled_or_impossible(vis_z3);
+
+                        let visible_and_deps = z3_bool::and(&[vis_z3_cond, deps_sat]);
+                        all_enabled_conditions.push(visible_and_deps);
+                    }
+
+                    // Visibility:None means that it has no prompt (always invisible)
+                    // - TODO: affected by implies and defaults
+                    (None, Some(dep)) => {
+                        println!("enabling dependencies:{:?}", dep);
+                        //todo!("affected by implies and defaults");
+                        let deps_sat = dep.enabled();
+                    }
+                    // add to all_enabled_conditions when visible (it has no dependencies)
+                    (Some(vis), None) => {
+                        let vis_z3 = kconfig_to_smt::model_kconfig_or_expr(&new_symtab, vis); //&symbol_table.raw, vis);
+                        let vis_z3_cond = enabled_or_impossible(vis_z3);
+                        all_enabled_conditions.push(vis_z3_cond);
+                    }
+                }
 
                 let defaults = attributes.kconfig_defaults;
                 let implies = attributes.implies;
-                todo!("need to use the visibility condition with implies and defaults");
+                //todo!("need to use the visibility condition with implies and defaults");
 
                 // only matters for int, hex
                 // TODO: alarm is this is used for other types!
                 let ranges = attributes.kconfig_ranges;
-                todo!("find the range bound conversion code from the old version of this");
+                //todo!("find the range bound conversion code from the old version of this");
             }
         }
 
@@ -197,21 +278,22 @@ pub fn model_kconfig(path: PathBuf) {
             // conditional: X.enabled() && Z -> Y
             // unconditional: X.enabled() -> Y
 
-            let selector_z3 = symbol_table
-                .raw
+            let selector_z3 = //symbol_table.raw
+                new_symtab
                 .get(&selector)
                 .expect("selector exists (not a dangling reference)")
                 .z3_type
                 .as_ref()
                 .expect("already converted all kconfig types to z3");
 
+            println!("enabling selector:{:?}", selector_z3);
             let selector_enabled = selector_z3.enabled();
             for (arch, select_condition) in archs_and_conditions {
                 if arch.clone() == Some(ENABLED_ARCH.clone()) || arch.clone() == None {
                     // conditional select: combine the selector's enablement condition with select condition
                     if let Some(cond) = select_condition {
-                        let select_condition_z3 =
-                            model_kconfig_or_expr(&symbol_table.raw, cond.clone());
+                        let select_condition_z3 = model_kconfig_or_expr(&new_symtab, cond.clone()); //&symbol_table.raw, cond.clone());
+                        println!("enabling select_condition:{:?}", select_condition_z3);
                         all_enabled_conditions.push(z3_bool::and(&[
                             selector_enabled.clone(),
                             (select_condition_z3.unwrap().enabled()), // actually we expect this to be a z3_bool
@@ -226,5 +308,16 @@ pub fn model_kconfig(path: PathBuf) {
 
         // so now "all_enablement_conditions" includes selectors
         // we also need dependencies && [visible / defaults]
+
+        // at this point, all_enabled_conditions is full of all the possible situations where
+        //    the current config option can be enabled. need to OR them together with the enabled expression.
+
+        let at_least_one_enabled_condition = z3_bool::or(&all_enabled_conditions);
+
+        let enabled_when_a_condition_met =
+            cur_symbol_enabled_z3.implies(at_least_one_enabled_condition);
+        solver.assert(enabled_when_a_condition_met);
     }
+
+    dbg!(solver.check());
 }

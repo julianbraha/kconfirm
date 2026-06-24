@@ -48,6 +48,22 @@ pub fn model_kconfig_type(symbol: &str, kconfig_type: &Type) -> Z3Types {
 }
 
 /// Models a Kconfig int comparison as an SMT boolean expression.
+fn model_kconfig_bool_comparison(
+    left: z3_bool,
+    comparison: nom_kconfig::attribute::CompareOperator,
+    right: z3_bool,
+) -> z3_bool {
+    match comparison {
+        nom_kconfig::attribute::CompareOperator::Equal => left.eq(right),
+        nom_kconfig::attribute::CompareOperator::NotEqual => left.ne(right),
+        _ => panic!(
+            "booleans are being compared like numbers {} and {}",
+            left, right
+        ),
+    }
+}
+
+/// Models a Kconfig int comparison as an SMT boolean expression.
 fn model_kconfig_int_comparison(
     left: z3_int,
     comparison: nom_kconfig::attribute::CompareOperator,
@@ -105,16 +121,23 @@ fn model_kconfig_atom(symbol_table: &HashMap<String, TypeInfo>, atom: Atom) -> O
 
             let right = match compare.right {
                 CompareOperand::Symbol(sym) => model_kconfig_symbol(symbol_table, sym),
-                CompareOperand::Macro(_) => todo!("model compare right operand macro"),
+                CompareOperand::Macro(r#macro) => {
+                    todo!("model compare right operand macro: {:?}", r#macro)
+                }
             };
             // early termination if the right variable is unknown
 
             match (left, right) {
-                (Z3Types::Bool(_), _) | (_, Z3Types::Bool(_)) => {
-                    todo!("model kconfig boolean comparison")
+                (Z3Types::Bool(b_left), Z3Types::Bool(b_right)) => {
+                    return Some(Z3Types::Bool(model_kconfig_bool_comparison(
+                        b_left, op, b_right,
+                    )));
                 }
 
-                (Z3Types::Integer(i_left), Z3Types::Integer(i_right)) => {
+                (
+                    Z3Types::Integer(i_left) | Z3Types::Tristate(i_left),
+                    Z3Types::Integer(i_right) | Z3Types::Tristate(i_right),
+                ) => {
                     return Some(Z3Types::Bool(model_kconfig_int_comparison(
                         i_left, op, i_right,
                     )));
@@ -126,7 +149,7 @@ fn model_kconfig_atom(symbol_table: &HashMap<String, TypeInfo>, atom: Atom) -> O
                     )));
                 }
 
-                _ => todo!("comparisons of other types"),
+                (_left, _right) => panic!("attempting to compare: {:?} and {:?}", _left, _right),
             }
         }
         _ => {
@@ -226,13 +249,16 @@ pub fn model_kconfig_and_exprs(
     let or_terms_asserted_bool: Vec<z3_bool> = z3_bools
         .into_iter()
         .map(
-            |e| e.enabled(), // match e {
-                             // Z3Types::Bool(b) => b,
-                             // we are modeling booleans and tristates as integers
-                             // so a condition of A AND B is (A > 0) AND (B > 0)
-                             // Z3Types::Integer(i) => i.gt(z3_int::from_u64(0)),
-                             // _ => unreachable!("expected to only use AND() on bools"),
-                             // }
+            |e| {
+                println!("attempting to enable {:?}", e);
+                e.enabled()
+            }, // match e {
+               // Z3Types::Bool(b) => b,
+               // we are modeling booleans and tristates as integers
+               // so a condition of A AND B is (A > 0) AND (B > 0)
+               // Z3Types::Integer(i) => i.gt(z3_int::from_u64(0)),
+               // _ => unreachable!("expected to only use AND() on bools"),
+               // }
         )
         .collect();
 
@@ -259,11 +285,14 @@ pub fn model_kconfig_and_expr(
             let and_terms_bool: Vec<z3_bool> = and_terms
                 .into_iter()
                 .map(
-                    |and_term| and_term.enabled(), //match and_term {
-                                                   //Z3Types::Integer(i) => i.ge(z3_int::from_i64(1)),
-                                                   //Z3Types::Bool(b) => b,
-                                                   //_ => unreachable!("don't expect to AND nonbools/nontristate"),
-                                                   //}
+                    |and_term| {
+                        println!("attempting to enable {:?}", and_term);
+                        and_term.enabled()
+                    }, //match and_term {
+                       //Z3Types::Integer(i) => i.ge(z3_int::from_i64(1)),
+                       //Z3Types::Bool(b) => b,
+                       //_ => unreachable!("don't expect to AND nonbools/nontristate"),
+                       //}
                 )
                 .collect();
 
