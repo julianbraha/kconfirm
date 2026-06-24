@@ -2,6 +2,7 @@ use nom_kconfig::{
     Attribute,
     Entry,
     attribute::{
+        Expression,
         Prompt,
         r#type::{
             ConfigType,
@@ -29,107 +30,71 @@ pub fn visit_entry(entry: Entry) -> Vec<Entry> {
     };
 }
 
-// Expands def_bool and def_tristate into default+bool/tristate
+// Splits a typed prompt (e.g. `bool "p" if c`) into a standalone `prompt "p" if c`
+// attribute plus a bare type (`bool`). The type's `if` condition is the prompt's
+// visibility condition, so it is carried onto the split-out prompt.
 pub fn visit_config(config: Config) -> Config {
-    let original_attributes = config.attributes;
-
     let mut transformed_attributes = Vec::new();
 
-    for attribute in original_attributes {
-        match &attribute {
-            Attribute::Type(t) => match &t.r#type {
-                Bool(b) => {
-                    let type_definition = Attribute::Type(ConfigType {
-                        r#type: Type::Bool(None),
-                        r#if: None,
-                    });
-
-                    if let Some(b_prompt) = b {
-                        let prompt = Attribute::Prompt(Prompt {
-                            prompt: b_prompt.to_owned(),
-                            r#if: None,
-                        });
-                        transformed_attributes.push(prompt);
-                    }
-
-                    transformed_attributes.push(type_definition);
+    for attribute in config.attributes {
+        match attribute {
+            Attribute::Type(ConfigType {
+                r#type,
+                r#if: prompt_if,
+            }) => match r#type {
+                Bool(prompt) => {
+                    split_typed_prompt(prompt, prompt_if, Bool(None), &mut transformed_attributes)
                 }
-                Tristate(t) => {
-                    let type_definition = Attribute::Type(ConfigType {
-                        r#type: Type::Tristate(None),
-                        r#if: None,
-                    });
-
-                    if let Some(t_prompt) = t {
-                        let prompt = Attribute::Prompt(Prompt {
-                            prompt: t_prompt.to_owned(),
-                            r#if: None,
-                        });
-                        transformed_attributes.push(prompt);
-                    }
-
-                    transformed_attributes.push(type_definition);
+                Tristate(prompt) => split_typed_prompt(
+                    prompt,
+                    prompt_if,
+                    Tristate(None),
+                    &mut transformed_attributes,
+                ),
+                String(prompt) => split_typed_prompt(
+                    prompt,
+                    prompt_if,
+                    String(None),
+                    &mut transformed_attributes,
+                ),
+                Int(prompt) => {
+                    split_typed_prompt(prompt, prompt_if, Int(None), &mut transformed_attributes)
                 }
-                String(s) => {
-                    let type_definition = Attribute::Type(ConfigType {
-                        r#type: Type::String(None),
-                        r#if: None,
-                    });
-
-                    if let Some(s_prompt) = s {
-                        let prompt = Attribute::Prompt(Prompt {
-                            prompt: s_prompt.to_owned(),
-                            r#if: None,
-                        });
-                        transformed_attributes.push(prompt);
-                    }
-
-                    transformed_attributes.push(type_definition);
+                Hex(prompt) => {
+                    split_typed_prompt(prompt, prompt_if, Hex(None), &mut transformed_attributes)
                 }
-                Int(i) => {
-                    let type_definition = Attribute::Type(ConfigType {
-                        r#type: Type::Int(None),
-                        r#if: None,
-                    });
-
-                    if let Some(i_prompt) = i {
-                        let prompt = Attribute::Prompt(Prompt {
-                            prompt: i_prompt.to_owned(),
-                            r#if: None,
-                        });
-                        transformed_attributes.push(prompt);
-                    }
-
-                    transformed_attributes.push(type_definition);
-                }
-                Hex(h) => {
-                    let type_definition = Attribute::Type(ConfigType {
-                        r#type: Type::Hex(None),
-                        r#if: None,
-                    });
-
-                    if let Some(h_prompt) = h {
-                        let prompt = Attribute::Prompt(Prompt {
-                            prompt: h_prompt.to_owned(),
-                            r#if: None,
-                        });
-                        transformed_attributes.push(prompt);
-                    }
-
-                    transformed_attributes.push(type_definition);
-                }
-                _ => {
-                    // identity transformation
-                    // def_bool, def_tristate don't have prompts
-                    transformed_attributes.push(attribute);
-                }
+                // def_bool, def_tristate, etc. don't carry a prompt; leave them unchanged.
+                other => transformed_attributes.push(Attribute::Type(ConfigType {
+                    r#type: other,
+                    r#if: prompt_if,
+                })),
             },
-            _ => transformed_attributes.push(attribute),
+            other => transformed_attributes.push(other),
         }
     }
 
     Config {
         attributes: transformed_attributes,
-        symbol: config.symbol.clone(),
+        symbol: config.symbol,
     }
+}
+
+/// Emit a standalone prompt (when present) carrying the visibility condition, then the bare type.
+fn split_typed_prompt(
+    prompt: Option<std::string::String>,
+    prompt_if: Option<Expression>,
+    bare_type: Type,
+    out: &mut Vec<Attribute>,
+) {
+    if let Some(prompt) = prompt {
+        out.push(Attribute::Prompt(Prompt {
+            prompt,
+            r#if: prompt_if,
+        }));
+    }
+
+    out.push(Attribute::Type(ConfigType {
+        r#type: bare_type,
+        r#if: None,
+    }));
 }

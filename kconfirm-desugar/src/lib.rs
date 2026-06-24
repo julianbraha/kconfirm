@@ -1,5 +1,7 @@
 mod combine_depends;
+mod distribute_choice;
 mod distribute_if;
+mod distribute_menu;
 mod expand_def_type;
 mod expand_depends_if;
 mod expand_source;
