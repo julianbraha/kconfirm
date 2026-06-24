@@ -111,8 +111,8 @@ pub fn model_kconfig(path: PathBuf) {
         let mut visibility_z3 = None; // if this remains None (never gets set to Some) then it's never visible
         let mut dependencies_z3 = None; // if this remains None then it has no dependencies (always sat)
         let mut selected_by_z3 = Vec::new(); // if this remains None then it has no selectors
-        let mut implied_by_z3 = None; // if this remains None then it has no impliors
-        let mut defaults_z3 = None; // if this remains None then it has no defaults
+        let mut implied_by_z3 = Vec::new(); // if this remains None then it has no impliors
+        //let mut defaults_z3 = None; // if this remains None then it has no defaults
 
         // here we add the constraint that this option (symbol) implies whatever it selects in kconfig
         //
@@ -276,7 +276,10 @@ pub fn model_kconfig(path: PathBuf) {
                     // conditional select: combine the selector's enablement condition with select condition
                     if let Some(cond) = select_condition {
                         let select_condition_z3 = model_kconfig_or_expr(&new_symtab, cond.clone()); //&symbol_table.raw, cond.clone());
+
+                        // selected_by vector no longer empty here:
                         selected_by_z3.push(select_condition_z3.clone());
+
                         all_enabled_conditions.push(z3_bool::and(&[
                             selector_enabled.clone(),
                             select_condition_z3, // actually we expect this to be a z3_bool
@@ -284,6 +287,45 @@ pub fn model_kconfig(path: PathBuf) {
                     } else {
                         // unconditional select under the current architecture
                         all_enabled_conditions.push(selector_enabled.clone());
+                    }
+                }
+            }
+        }
+
+        // this loop is for handling all config options that imply the current option
+        for (implicator, archs_and_conditions) in type_info.implied_by {
+            // config X
+            //    imply Y (if Z)
+            //
+            // becomes z3 assertions:
+            //
+            // conditional: X.enabled() && Z -> Y
+            // unconditional: X.enabled() -> Y
+
+            let implicator_z3 = new_symtab
+                .get(&implicator)
+                .expect("selector exists (not a dangling reference)")
+                .z3_type
+                .as_ref()
+                .expect("already converted all kconfig types to z3");
+
+            let implicator_enabled = implicator_z3.enabled();
+            for (arch, imply_condition) in archs_and_conditions {
+                if arch.clone() == Some(ENABLED_ARCH.clone()) || arch.clone() == None {
+                    // conditional select: combine the selector's enablement condition with select condition
+                    if let Some(cond) = imply_condition {
+                        let imply_condition_z3 = model_kconfig_or_expr(&new_symtab, cond.clone()); //&symbol_table.raw, cond.clone());
+
+                        // selected_by vector no longer empty here:
+                        implied_by_z3.push(imply_condition_z3.clone());
+
+                        all_enabled_conditions.push(z3_bool::and(&[
+                            implicator_enabled.clone(),
+                            imply_condition_z3, // actually we expect this to be a z3_bool
+                        ]))
+                    } else {
+                        // unconditional select under the current architecture
+                        all_enabled_conditions.push(implicator_enabled.clone());
                     }
                 }
             }
