@@ -154,17 +154,9 @@ pub fn model_kconfig(path: PathBuf) {
                                 let selectee_enabled = selectee_z3.enabled();
                                 // conditional select
                                 if let Some(sel_cond) = select_condition {
-                                    println!(
-                                        "enabling select_condition:{:?}",
-                                        model_kconfig_or_expr(&new_symtab, sel_cond.clone())//&symbol_table.raw, sel_cond.clone())
-                                            .expect("dunno why this is an option")
-                                    );
-                                    let select_condition_z3 = model_kconfig_or_expr(
-                                        &new_symtab,
-                                        sel_cond,
-                                    ) //&symbol_table.raw, sel_cond)
-                                    .expect("dunno why this is an option")
-                                    .enabled();
+                                    let select_condition_z3 =
+                                        model_kconfig_or_expr(&new_symtab, sel_cond) //&symbol_table.raw, sel_cond)
+                                            ;
 
                                     let selector_enabled_and_select_condition_true =
                                         z3_bool::and(&[
@@ -191,9 +183,9 @@ pub fn model_kconfig(path: PathBuf) {
                 // kconfirm-desugar combines all dependencies into a single
                 // condition, so there is at most one here.
                 dbg!(&attributes.kconfig_dependencies);
-                let z3_dependencies = attributes.kconfig_dependencies.as_ref().and_then(|deps| {
-                    kconfig_to_smt::model_kconfig_or_expr(&new_symtab, deps.to_owned()) //&symbol_table.raw, deps.to_owned())
-                });
+                let z3_dependencies = attributes.kconfig_dependencies.as_ref().map(
+                    |deps| kconfig_to_smt::model_kconfig_or_expr(&new_symtab, deps.to_owned()), //&symbol_table.raw, deps.to_owned())
+                );
 
                 // get the selected-by constraint (we will OR-this with the dependencies)
 
@@ -232,13 +224,9 @@ pub fn model_kconfig(path: PathBuf) {
 
                     // add to all_enabled_conditions when visible && deps
                     (Some(vis), Some(dep)) => {
-                        println!("enabling dependencies:{:?}", dep);
-                        let deps_sat = dep.enabled();
-
                         let vis_z3 = kconfig_to_smt::model_kconfig_or_expr(&new_symtab, vis); //&symbol_table.raw, vis);
-                        let vis_z3_cond = enabled_or_impossible(vis_z3);
 
-                        let visible_and_deps = z3_bool::and(&[vis_z3_cond, deps_sat]);
+                        let visible_and_deps = z3_bool::and(&[vis_z3, dep]);
                         all_enabled_conditions.push(visible_and_deps);
                     }
 
@@ -247,16 +235,18 @@ pub fn model_kconfig(path: PathBuf) {
                     (None, Some(dep)) => {
                         println!("enabling dependencies:{:?}", dep);
                         //todo!("affected by implies and defaults");
-                        let deps_sat = dep.enabled();
                     }
                     // add to all_enabled_conditions when visible (it has no dependencies)
                     (Some(vis), None) => {
                         let vis_z3 = kconfig_to_smt::model_kconfig_or_expr(&new_symtab, vis); //&symbol_table.raw, vis);
-                        let vis_z3_cond = enabled_or_impossible(vis_z3);
-                        all_enabled_conditions.push(vis_z3_cond);
+
+                        all_enabled_conditions.push(vis_z3);
                     }
                 }
 
+                // NOTE: IMPLY IS PRIORITIZED OVER DEFAULT
+                //[ DEPS && !VIS ] -> implies or defaults (which takes priority?)
+                //todo!("i think we need to be capturing the impliers in the implyees entries, like we do for select. let's see...");
                 let defaults = attributes.kconfig_defaults;
                 let implies = attributes.implies;
                 //todo!("need to use the visibility condition with implies and defaults");
@@ -293,10 +283,10 @@ pub fn model_kconfig(path: PathBuf) {
                     // conditional select: combine the selector's enablement condition with select condition
                     if let Some(cond) = select_condition {
                         let select_condition_z3 = model_kconfig_or_expr(&new_symtab, cond.clone()); //&symbol_table.raw, cond.clone());
-                        println!("enabling select_condition:{:?}", select_condition_z3);
+
                         all_enabled_conditions.push(z3_bool::and(&[
                             selector_enabled.clone(),
-                            (select_condition_z3.unwrap().enabled()), // actually we expect this to be a z3_bool
+                            select_condition_z3, // actually we expect this to be a z3_bool
                         ]))
                     } else {
                         // unconditional select under the current architecture
