@@ -528,10 +528,49 @@ fn handle_config(
                     None,
                     Vec::new(),
                     Vec::new(),
-                    Vec::new(),
+                    None,
                     child_ctx.arch.clone(),
                     child_ctx.definition_condition.clone(),
                     Some((config_symbol.clone(), Some(select_condition))),
+                    None,
+                    Vec::new(),
+                    Vec::new(),
+                );
+            }
+        }
+    }
+
+    // keep track of the implier in the implied option's `implied_by` list, the same way we
+    // track selectors in `selected_by`. `imply` references a `Symbol`, which we store as a
+    // string like other references to config options.
+    for imply in kconfig_implies {
+        match imply.r#if {
+            None => symtab.merge_insert_new_solved(
+                imply.symbol.to_string(),
+                None,
+                None,
+                Vec::new(),
+                Vec::new(),
+                None,
+                child_ctx.arch.clone(),
+                child_ctx.definition_condition.clone(),
+                None,
+                Some((config_symbol.clone(), None)),
+                Vec::new(),
+                Vec::new(),
+            ),
+            Some(imply_condition) => {
+                symtab.merge_insert_new_solved(
+                    imply.symbol.to_string(),
+                    None,
+                    None,
+                    Vec::new(),
+                    Vec::new(),
+                    None,
+                    child_ctx.arch.clone(),
+                    child_ctx.definition_condition.clone(),
+                    None,
+                    Some((config_symbol.clone(), Some(imply_condition))),
                     Vec::new(),
                     Vec::new(),
                 );

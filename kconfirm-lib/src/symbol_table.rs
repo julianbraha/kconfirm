@@ -67,6 +67,11 @@ pub struct TypeInfo {
     /// If the condition is `None`, then the `select` is unconditional.
     pub selected_by: HashMap<KconfigSymbol, Vec<(Arch, Cond)>>,
 
+    /// Maps the implier of this symbol to the architecture and the `imply` condition.
+    /// If the architecture is `None`, then it's not arch-specific.
+    /// If the condition is `None`, then the `imply` is unconditional.
+    pub implied_by: HashMap<KconfigSymbol, Vec<(Arch, Cond)>>,
+
     /// Maps the architecture to the various partial definitions of the `config` option with their
     /// condition expressions.
     pub attribute_defs: HashMap<Arch, Vec<(Vec<Expression>, AttributeDef)>>,
@@ -78,6 +83,7 @@ impl TypeInfo {
             kconfig_type: None,
             z3_type: None,
             selected_by: HashMap::new(),
+            implied_by: HashMap::new(),
             attribute_defs: HashMap::new(),
         }
     }
@@ -95,6 +101,7 @@ impl TypeInfo {
         arch: Option<String>,
         definition_condition: Vec<OrExpression>,
         selected_by: Option<(KconfigSymbol, Cond)>,
+        implied_by: Option<(KconfigSymbol, Cond)>,
         selects: Vec<(KconfigSymbol, Cond)>,
         implies: Vec<(KconfigSymbol, Cond)>,
     ) {
@@ -115,6 +122,11 @@ impl TypeInfo {
         // selected_by merge
         if let Some(sb) = selected_by {
             merge_selected_by(&mut self.selected_by, arch.clone(), sb);
+        }
+
+        // implied_by merge
+        if let Some(ib) = implied_by {
+            merge_implied_by(&mut self.implied_by, arch.clone(), ib);
         }
 
         // variable_info merge:
@@ -315,6 +327,7 @@ impl SymbolTable {
         arch: Arch,
         definition_condition: Vec<OrExpression>,
         selected_by: Option<(KconfigSymbol, Cond)>,
+        implied_by: Option<(KconfigSymbol, Cond)>,
         selects: Vec<(KconfigSymbol, Cond)>,
         implies: Vec<(KconfigSymbol, Cond)>,
     ) {
@@ -332,6 +345,7 @@ impl SymbolTable {
                     arch,
                     definition_condition,
                     selected_by,
+                    implied_by,
                     selects,
                     implies,
                 );
@@ -350,6 +364,7 @@ impl SymbolTable {
                     arch,
                     definition_condition,
                     selected_by,
+                    implied_by,
                     selects,
                     implies,
                 );
@@ -368,6 +383,18 @@ fn merge_selected_by(
     map.entry(selected_by.0)
         .or_default() // empty vec
         .push((arch, selected_by.1));
+}
+
+/// Adds the implier `config` symbol to the `implied_by` list for this `config` option into the
+/// symbol table.
+fn merge_implied_by(
+    map: &mut HashMap<String, Vec<(Arch, Cond)>>,
+    arch: Arch,
+    implied_by: (KconfigSymbol, Cond),
+) {
+    map.entry(implied_by.0)
+        .or_default() // empty vec
+        .push((arch, implied_by.1));
 }
 
 /// Inserts the type information into the symbol table.
