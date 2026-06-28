@@ -18,13 +18,13 @@ git clone https://github.com/julianbraha/kconfirm.git
 cd kconfirm
 
 # compile
-cargo build --release
+cargo build --release -p kconfirm-cli
 
 # run (for linux):
-./target/release/kconfirm --linux-dir-path RELATIVE_PATH_TO_LINUX_SOURCE
+./target/release/kconfirm-cli --linux-dir-path RELATIVE_PATH_TO_LINUX_SOURCE
 
 # run (for coreboot):
-./target/release/kconfirm --coreboot-dir-path RELATIVE_PATH_TO_COREBOOT_SOURCE
+./target/release/kconfirm-cli --coreboot-dir-path RELATIVE_PATH_TO_COREBOOT_SOURCE
 ```
 
 To enable the check for dead links in the Kconfig `help` texts:
