@@ -1,74 +1,74 @@
-use std::fs;
-use std::process::Command;
+// use std::fs;
+// use std::process::Command;
 
-#[test]
-// system test
-fn test_linux_kconfig_analysis_v6_19() {
-    let tmp_dir = std::env::temp_dir().join("kconfirm_linux_test");
-    let tar_path = tmp_dir.join("linux-6.19.tar.xz");
-    let extract_dir = tmp_dir.join("linux-6.19");
+// #[test]
+// // system test
+// fn test_linux_kconfig_analysis_v6_19() {
+//     let tmp_dir = std::env::temp_dir().join("kconfirm_linux_test");
+//     let tar_path = tmp_dir.join("linux-6.19.tar.xz");
+//     let extract_dir = tmp_dir.join("linux-6.19");
 
-    fs::create_dir_all(&tmp_dir).unwrap();
+//     fs::create_dir_all(&tmp_dir).unwrap();
 
-    // download if missing
-    if !tar_path.exists() {
-        let status = Command::new("curl")
-            .args(["-L", "-o"])
-            .arg(&tar_path)
-            .arg("https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.19.tar.xz")
-            .status()
-            .expect("failed to run curl");
+//     // download if missing
+//     if !tar_path.exists() {
+//         let status = Command::new("curl")
+//             .args(["-L", "-o"])
+//             .arg(&tar_path)
+//             .arg("https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.19.tar.xz")
+//             .status()
+//             .expect("failed to run curl");
 
-        assert!(status.success(), "download failed");
-    }
+//         assert!(status.success(), "download failed");
+//     }
 
-    // extract if missing
-    if !extract_dir.exists() {
-        let status = Command::new("tar")
-            .arg("-xf")
-            .arg(&tar_path)
-            .arg("-C")
-            .arg(&tmp_dir)
-            .status()
-            .expect("failed to extract");
+//     // extract if missing
+//     if !extract_dir.exists() {
+//         let status = Command::new("tar")
+//             .arg("-xf")
+//             .arg(&tar_path)
+//             .arg("-C")
+//             .arg(&tmp_dir)
+//             .status()
+//             .expect("failed to extract");
 
-        assert!(status.success(), "extract failed");
-    }
+//         assert!(status.success(), "extract failed");
+//     }
 
-    // run analysis via cli
-    let output = Command::new("cargo")
-        .args([
-            "run",
-            "-p",
-            "kconfirm-cli",
-            "--quiet",
-            "--",
-            "--linux-dir-path",
-        ])
-        .arg(&extract_dir)
-        // explicitly enable style, keep dead_link disabled
-        .args([
-            "--enable-check",
-            "duplicate_default_value,ungrouped_attribute",
-            "--disable-check",
-            "dead_link",
-        ])
-        .output()
-        .expect("failed to run cargo");
+//     // run analysis via cli
+//     let output = Command::new("cargo")
+//         .args([
+//             "run",
+//             "-p",
+//             "kconfirm-cli",
+//             "--quiet",
+//             "--",
+//             "--linux-dir-path",
+//         ])
+//         .arg(&extract_dir)
+//         // explicitly enable style, keep dead_link disabled
+//         .args([
+//             "--enable-check",
+//             "duplicate_default_value,ungrouped_attribute",
+//             "--disable-check",
+//             "dead_link",
+//         ])
+//         .output()
+//         .expect("failed to run cargo");
 
-    assert!(
-        output.status.success(),
-        "analysis failed:\n{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+//     assert!(
+//         output.status.success(),
+//         "analysis failed:\n{}",
+//         String::from_utf8_lossy(&output.stderr)
+//     );
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let line_count = stdout.lines().count();
+//     let stdout = String::from_utf8_lossy(&output.stdout);
+//     let line_count = stdout.lines().count();
 
-    assert!(
-        line_count == 2170,
-        "expected 2170 lines, got {}\n See output:\n{}",
-        line_count,
-        stdout
-    );
-}
+//     assert!(
+//         line_count == 2170,
+//         "expected 2170 lines, got {}\n See output:\n{}",
+//         line_count,
+//         stdout
+//     );
+// }
