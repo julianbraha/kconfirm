@@ -1,11 +1,11 @@
 use nom_kconfig::{
     Attribute,
     Entry,
-    attribute::{AndExpression, OrExpression, depends_on::DependsOn},
+    attribute::{OrExpression, depends_on::DependsOn},
     entry::Config, //
 };
 
-use crate::utils::and_terms::into_and_terms;
+use crate::utils::and_terms::and_expressions;
 
 pub fn visit_entries(entries: Vec<Entry>) -> Vec<Entry> {
     let mut all_entries = Vec::new();
@@ -46,15 +46,6 @@ pub fn visit_entry(entry: Entry) -> Vec<Entry> {
     }
 }
 
-// ANDs two `if` conditions together (`c1 && c2`).
-// wraps a condition in parentheses if the condition has an ||
-fn and_conditions(c1: OrExpression, c2: OrExpression) -> OrExpression {
-    let mut terms = into_and_terms(c1);
-    terms.extend(into_and_terms(c2));
-    // each condition contributes at least one term, so there are always >= 2.
-    OrExpression::Term(AndExpression::Expression(terms))
-}
-
 /// Adds `condition` as a `depends on` to `entry`. For `menu`/`choice`
 /// containers the condition is added to the container's own dependency list;
 /// their inner config options inherit it later via the menu/choice distribution
@@ -85,7 +76,7 @@ pub fn distribute_dependency(entry: Entry, condition: OrExpression) -> Vec<Entry
         }
         Entry::If(nested_if) => {
             // join the conditions with a logical-AND and keep flattening.
-            let joined = and_conditions(condition, nested_if.condition);
+            let joined = and_expressions(condition, nested_if.condition);
             nested_if
                 .entries
                 .into_iter()

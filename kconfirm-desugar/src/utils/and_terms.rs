@@ -22,3 +22,28 @@ pub(crate) fn combine_and_terms(mut terms: Vec<Term>) -> Option<AndExpression> {
         _ => Some(AndExpression::Expression(terms)),
     }
 }
+
+// ANDs two expressions together (`c1 && c2`).
+// wraps a subexpression in parentheses if it has an ||
+pub(crate) fn and_expressions(c1: OrExpression, c2: OrExpression) -> OrExpression {
+    let mut terms = into_and_terms(c1);
+    terms.extend(into_and_terms(c2));
+    // each expression contributes at least one term, so there are always >= 2.
+    OrExpression::Term(AndExpression::Expression(terms))
+}
+
+// the top-level disjuncts of an expression.
+pub(crate) fn into_or_terms(expression: OrExpression) -> Vec<AndExpression> {
+    match expression {
+        OrExpression::Term(term) => vec![term],
+        OrExpression::Expression(terms) => terms,
+    }
+}
+
+// ORs two expressions together (`c1 || c2`) by concatenating their disjuncts.
+pub(crate) fn or_expressions(c1: OrExpression, c2: OrExpression) -> OrExpression {
+    let mut disjuncts = into_or_terms(c1);
+    disjuncts.extend(into_or_terms(c2));
+    // each expression contributes at least one disjunct, so there are always >= 2.
+    OrExpression::Expression(disjuncts)
+}

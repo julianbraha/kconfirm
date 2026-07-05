@@ -14,25 +14,16 @@ use nom_kconfig::{
     entry::Config, //
 };
 
+use crate::utils::map_configs::map_configs;
+
+/// Visits every config/menuconfig, descending into menus and choices.
 pub fn visit_entries(entries: Vec<Entry>) -> Vec<Entry> {
-    let mut all_entries = Vec::new();
-    for entry in entries {
-        let cur_entries = visit_entry(entry);
-        all_entries.extend(cur_entries);
-    }
-    all_entries
+    map_configs(entries, visit_config)
 }
 
-pub fn visit_entry(entry: Entry) -> Vec<Entry> {
-    return match entry {
-        Entry::Config(config) => {
-            vec![Entry::Config(visit_config(config))]
-        }
-        _ => vec![entry],
-    };
-}
-
-// Expands def_bool and def_tristate into default+bool/tristate
+// Expands def_bool and def_tristate into default+bool/tristate.
+// The type's `if` condition guards the default value, so it is carried onto
+// the split-out `default` attribute.
 pub fn visit_config(config: Config) -> Config {
     let original_attributes = config.attributes;
 
@@ -49,7 +40,7 @@ pub fn visit_config(config: Config) -> Config {
 
                     let default = Attribute::Default(DefaultAttribute {
                         expression: db.to_owned(),
-                        r#if: None,
+                        r#if: t.r#if.clone(),
                     });
 
                     transformed_attributes.push(type_definition);
@@ -63,7 +54,7 @@ pub fn visit_config(config: Config) -> Config {
 
                     let default = Attribute::Default(DefaultAttribute {
                         expression: dt.to_owned(),
-                        r#if: None,
+                        r#if: t.r#if.clone(),
                     });
 
                     transformed_attributes.push(type_definition);
@@ -77,7 +68,7 @@ pub fn visit_config(config: Config) -> Config {
 
                     let default = Attribute::Default(DefaultAttribute {
                         expression: dt.to_owned(),
-                        r#if: None,
+                        r#if: t.r#if.clone(),
                     });
 
                     transformed_attributes.push(type_definition);
@@ -91,7 +82,7 @@ pub fn visit_config(config: Config) -> Config {
 
                     let default = Attribute::Default(DefaultAttribute {
                         expression: dt.to_owned(),
-                        r#if: None,
+                        r#if: t.r#if.clone(),
                     });
 
                     transformed_attributes.push(type_definition);
@@ -105,7 +96,7 @@ pub fn visit_config(config: Config) -> Config {
 
                     let default = Attribute::Default(DefaultAttribute {
                         expression: dt.to_owned(),
-                        r#if: None,
+                        r#if: t.r#if.clone(),
                     });
 
                     transformed_attributes.push(type_definition);

@@ -12,22 +12,11 @@ use nom_kconfig::{
     entry::Config, //
 };
 
-pub fn visit_entries(entries: Vec<Entry>) -> Vec<Entry> {
-    let mut all_entries = Vec::new();
-    for entry in entries {
-        let cur_entries = visit_entry(entry);
-        all_entries.extend(cur_entries);
-    }
-    all_entries
-}
+use crate::utils::map_configs::map_configs;
 
-pub fn visit_entry(entry: Entry) -> Vec<Entry> {
-    return match entry {
-        Entry::Config(config) => {
-            vec![Entry::Config(visit_config(config))]
-        }
-        _ => vec![entry],
-    };
+/// Visits every config/menuconfig, descending into menus and choices.
+pub fn visit_entries(entries: Vec<Entry>) -> Vec<Entry> {
+    map_configs(entries, visit_config)
 }
 
 // Splits a typed prompt (e.g. `bool "p" if c`) into a standalone `prompt "p" if c`
