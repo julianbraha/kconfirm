@@ -1,0 +1,7 @@
+[package]
+name = "z3-ternary"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+z3 = "0.20"
