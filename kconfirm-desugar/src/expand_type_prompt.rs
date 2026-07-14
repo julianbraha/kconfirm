@@ -2,8 +2,7 @@ use nom_kconfig::{
     Attribute,
     Entry,
     attribute::{
-        Expression,
-        Prompt,
+        Expression, Prompt,
         r#type::{
             ConfigType,
             Type::{self, Bool, Hex, Int, String, Tristate},
@@ -19,7 +18,7 @@ pub fn visit_entries(entries: Vec<Entry>) -> Vec<Entry> {
     map_configs(entries, visit_config)
 }
 
-// Splits a typed prompt (e.g. `bool "p" if c`) into a standalone `prompt "p" if c`
+// Splits a typed prompt (e.g. `bool "pompt" if cond`) into a standalone `prompt "p" if cond`
 // attribute plus a bare type (`bool`). The type's `if` condition is the prompt's
 // visibility condition, so it is carried onto the split-out prompt.
 pub fn visit_config(config: Config) -> Config {
@@ -40,12 +39,9 @@ pub fn visit_config(config: Config) -> Config {
                     Tristate(None),
                     &mut transformed_attributes,
                 ),
-                String(prompt) => split_typed_prompt(
-                    prompt,
-                    prompt_if,
-                    String(None),
-                    &mut transformed_attributes,
-                ),
+                String(prompt) => {
+                    split_typed_prompt(prompt, prompt_if, String(None), &mut transformed_attributes)
+                }
                 Int(prompt) => {
                     split_typed_prompt(prompt, prompt_if, Int(None), &mut transformed_attributes)
                 }
@@ -68,7 +64,7 @@ pub fn visit_config(config: Config) -> Config {
     }
 }
 
-/// Emit a standalone prompt (when present) carrying the visibility condition, then the bare type.
+/// Split the standalone prompt (when present) with the visibility condition, then the type.
 fn split_typed_prompt(
     prompt: Option<std::string::String>,
     prompt_if: Option<Expression>,

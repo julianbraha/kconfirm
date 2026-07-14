@@ -18,7 +18,7 @@ pub fn visit_entries(entries: Vec<Entry>) -> Vec<Entry> {
 
 pub fn visit_entry(entry: Entry) -> Vec<Entry> {
     match entry {
-        // flatten the `if`: push its condition onto every contained entry and
+        // distribute the `if`: push its condition onto every contained entry and
         // drop the `if` itself.
         Entry::If(r#if) => {
             let condition = r#if.condition;
@@ -28,7 +28,7 @@ pub fn visit_entry(entry: Entry) -> Vec<Entry> {
                 .collect()
         }
         // not inside an `if`, but these containers may hold nested `if`s, so we
-        // still recurse to flatten those.
+        // still recurse to distribute those.
         Entry::Menu(mut menu) => {
             menu.entries = visit_entries(menu.entries);
             vec![Entry::Menu(menu)]
@@ -57,12 +57,10 @@ pub fn distribute_dependency(entry: Entry, condition: OrExpression) -> Vec<Entry
             vec![Entry::Config(push_dependency(c, condition))]
         }
         Entry::Choice(mut choice) => {
-            choice
-                .options
-                .push(Attribute::DependsOn(DependsOn {
-                    expression: condition,
-                    r#if: None,
-                }));
+            choice.options.push(Attribute::DependsOn(DependsOn {
+                expression: condition,
+                r#if: None,
+            }));
             choice.entries = visit_entries(choice.entries);
             vec![Entry::Choice(choice)]
         }

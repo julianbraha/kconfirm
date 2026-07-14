@@ -10,15 +10,11 @@ use nom_kconfig::{
 use crate::utils::and_terms::and_expressions;
 
 // Merges all partial definitions of a config option into a single definition,
-// placed where the earliest partial definition was — even when the partial
-// definitions live in different menu/choice containers. A partial definition's
+// placed where the earliest partial definition was. A partial definition's
 // `depends on` applies only to the attributes written in that same definition:
 // it is removed and its expression is ANDed onto the `if` condition of each of
-// those attributes. Because the earlier passes copied every container's
-// dependencies down onto the configs it contains, a partial definition's
-// `depends on` already carries its menu/choice context, so a later definition
-// can be dropped from its container without losing that context. An option
-// defined exactly once is not a partial definition and is kept unchanged,
+// those attributes.
+// An option defined exactly once is not a partial definition and is kept unchanged,
 // `depends on` included.
 pub fn visit_entries(entries: Vec<Entry>) -> Vec<Entry> {
     let mut definition_counts: HashMap<String, usize> = HashMap::new();
@@ -30,7 +26,7 @@ pub fn visit_entries(entries: Vec<Entry>) -> Vec<Entry> {
     rebuild(entries, &definition_counts, &mut merged_attributes)
 }
 
-/// Count every definition of each symbol, anywhere in the entry tree.
+/// Count the number of definitions of each symbol.
 fn count_definitions(entries: &[Entry], counts: &mut HashMap<String, usize>) {
     for entry in entries {
         match entry {
@@ -44,9 +40,9 @@ fn count_definitions(entries: &[Entry], counts: &mut HashMap<String, usize>) {
     }
 }
 
-/// Gather the merged attribute list of every multiply defined symbol: each
+/// Gather the merged attribute list of every multiply-defined symbol: each
 /// partial definition's attributes (with its own `depends on` distributed
-/// onto them) in document order, across container boundaries.
+/// onto them) in declaration order, across container (e.g. choice) boundaries.
 fn collect_merged_attributes(
     entries: &[Entry],
     definition_counts: &HashMap<String, usize>,
@@ -74,10 +70,8 @@ fn collect_merged_attributes(
     }
 }
 
-/// Rebuild the entry tree: the earliest definition of a multiply defined
-/// symbol becomes the merged definition (keeping its `config`/`menuconfig`
-/// entry kind and its place in the tree), every later definition is removed
-/// from its container, and everything else stays where it was.
+/// Rebuild the entry tree: the merged definition is placed at the earliest definition
+/// and everything else stays where it was.
 fn rebuild(
     entries: Vec<Entry>,
     definition_counts: &HashMap<String, usize>,
@@ -113,8 +107,8 @@ fn rebuild(
     rebuilt
 }
 
-/// A single definition passes through unchanged, `depends on` included. The
-/// first definition of a multiply defined symbol takes the full merged
+/// A single definition passes through unchanged (identity), `depends on` included.
+/// The first definition of a multiply defined symbol takes the full merged
 /// attribute list; every later one yields `None` and is dropped.
 fn rebuild_config(
     config: Config,

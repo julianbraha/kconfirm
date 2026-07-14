@@ -73,8 +73,9 @@ fn expand_attribute(attribute: Attribute) -> Attribute {
 }
 
 /// Fold the `if Y` of a `depends on X if Y` into the dependency expression,
-/// yielding `depends on X || <Y is off>`: the dependency only binds while the
-/// condition holds. A plain `depends on X` is left as-is.
+/// which becomes `depends on X || Y=n`.
+///
+/// A plain `depends on X` is left as-is.
 fn expand_depends_on(dependency: DependsOn) -> DependsOn {
     match dependency.r#if {
         None => dependency,
@@ -85,14 +86,14 @@ fn expand_depends_on(dependency: DependsOn) -> DependsOn {
     }
 }
 
-/// Build the expression that holds exactly when `condition` is off (evaluates
+/// Build the expression that holds exactly when `condition` is false (evaluates
 /// to `n`), so the dependency is waived in that case. The condition is lowered
 /// recursively:
-/// - `Y`         is off when `Y` is disabled:          `(Y = n)`
-/// - `!Y`        is off when `Y` is enabled:           `(Y != n)`
-/// - `c1 && c2`  is off when either operand is off
-/// - `c1 || c2`  is off when both operands are off
-/// - a comparison is boolean: off exactly when the negated comparison holds
+/// - `Y` is false when `Y` is disabled: `(Y == n)`
+/// - `!Y` is false when `Y` is enabled: `(Y != n)`
+/// - `c1 && c2` is false when either operand is false
+/// - `c1 || c2` is false when both operands are false
+/// - a comparison is boolean: false exactly when the negated comparison holds
 fn condition_is_off(condition: Expression) -> Expression {
     match condition {
         OrExpression::Term(term) => and_expression_is_off(term),
@@ -105,11 +106,11 @@ fn condition_is_off(condition: Expression) -> Expression {
     }
 }
 
-/// Dual of [condition_is_off]: holds exactly when `condition` is on (not `n`).
+/// Dual of `condition_is_off`: holds exactly when `condition` is not `n`.
 fn condition_is_on(condition: Expression) -> Expression {
     match condition {
         OrExpression::Term(term) => and_expression_is_on(term),
-        // `c1 || c2` is on when any disjunct is on.
+        // `c1 || c2` is on when any disjunct (OR term) is on.
         OrExpression::Expression(disjuncts) => disjuncts
             .into_iter()
             .map(and_expression_is_on)
@@ -133,7 +134,7 @@ fn and_expression_is_off(and: AndExpression) -> Expression {
 fn and_expression_is_on(and: AndExpression) -> Expression {
     match and {
         AndExpression::Term(term) => term_is_on(term),
-        // `c1 && c2` is on when every conjunct is on.
+        // `c1 && c2` is true when every conjunct is true.
         AndExpression::Expression(conjuncts) => conjuncts
             .into_iter()
             .map(term_is_on)
@@ -158,12 +159,13 @@ fn term_is_on(term: Term) -> Expression {
 
 fn atom_is_off(atom: Atom) -> Expression {
     match atom {
-        // `Y` is off when it is disabled.
+        // `Y` is false when it is disabled.
         Atom::Symbol(symbol) => symbol_compare(symbol, CompareOperator::Equal),
         Atom::Parenthesis(inner) => condition_is_off(*inner),
-        // a comparison is boolean, so it is off exactly when its negation holds.
+        // a comparison is boolean, so it is false exactly when its negation holds.
         Atom::Compare(comparison) => comparison_expression(negate_comparison(comparison)),
-        // we cannot look inside a macro call; `!macro` is the best we can say.
+
+        // TODO: we now preprocess macros, this should be removable
         Atom::Macro(_) => term_expression(Term::Not(atom)),
     }
 }
@@ -178,7 +180,7 @@ fn atom_is_on(atom: Atom) -> Expression {
     }
 }
 
-/// Build the comparison `(symbol <op> n)` (e.g. `(Y = n)` or `(Y != n)`).
+/// Build the comparison `(symbol op n)` (e.g. `(Y == n)` or `(Y != n)`).
 fn symbol_compare(symbol: Symbol, operator: CompareOperator) -> Expression {
     comparison_expression(CompareExpression {
         left: CompareOperand::Symbol(symbol),
@@ -187,8 +189,8 @@ fn symbol_compare(symbol: Symbol, operator: CompareOperator) -> Expression {
     })
 }
 
-/// Lift a comparison into an expression, wrapped in parentheses so the
-/// dependency reads e.g. `X || (Y = n)`.
+/// Wrap the comparison in parentheses so the
+/// dependency reads e.g. for depends on X if Y: `X || (Y == n)`.
 fn comparison_expression(comparison: CompareExpression) -> Expression {
     let parenthesized = Atom::Parenthesis(Box::new(term_expression(Term::Atom(Atom::Compare(
         comparison,
@@ -196,7 +198,6 @@ fn comparison_expression(comparison: CompareExpression) -> Expression {
     term_expression(Term::Atom(parenthesized))
 }
 
-/// Lift a term into an expression.
 fn term_expression(term: Term) -> Expression {
     OrExpression::Term(AndExpression::Term(term))
 }

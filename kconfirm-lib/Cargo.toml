@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 [package]
 name = "kconfirm-lib"
-version = "0.9.1"
+version = "1.0.0"
 edition = "2024"
 rust-version.workspace = true
 description = "Static analysis library for the Kconfig configuration language"
@@ -14,10 +14,13 @@ categories = ["development-tools", "config"]
 [dependencies]
 nom-kconfig = { workspace = true }
 z3 = { workspace = true }
+z3-ternary = { path = "../z3-ternary" }
 curl = { version = "0.4" }
 log = { workspace = true }
 env_logger = { workspace = true }
 regex = { version = "1.12", default-features = false }
+derive_more = {version = "2.1.1", features = ["try_into"]}
+kconfirm-desugar = { path = "../kconfirm-desugar" }
 
 [features]
 default = []

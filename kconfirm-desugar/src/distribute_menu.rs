@@ -5,13 +5,12 @@ use nom_kconfig::{
     entry::Config, //
 };
 
-/// Distributes each `menu`'s dependencies down onto every `config` option it
-/// contains (recursively, through nested menus and choices). In Kconfig
-/// semantics the items inside a menu are only available when the menu's
-/// dependencies are satisfied, so each contained config inherits them.
+/// Distributes each `menu`'s dependencies onto every `config` option it
+/// contains (recursively, through nested menus and choices).
 ///
-/// The menu keeps its own `depends_on` (later used for visibility); we only
-/// *copy* the dependencies down onto the contained config options.
+/// The menu keeps its own `depends_on`; we only
+/// *copy* the dependencies down onto the contained config options (will be
+/// combined by a later pass.)
 pub fn visit_entries(entries: Vec<Entry>) -> Vec<Entry> {
     entries.into_iter().map(visit_entry).collect()
 }

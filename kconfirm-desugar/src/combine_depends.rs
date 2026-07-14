@@ -75,7 +75,7 @@ fn combine_depends_on(deps: Vec<DependsOn>) -> Vec<DependsOn> {
 }
 
 /// Combine the `depends on` attributes within a choice's options into a single
-/// AND'd attribute, preserving every other option.
+/// AND'd attribute.
 fn combine_choice_options(options: Vec<Attribute>) -> Vec<Attribute> {
     let mut other_options = Vec::new();
 

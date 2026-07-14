@@ -32,7 +32,7 @@ pub(crate) fn and_expressions(c1: OrExpression, c2: OrExpression) -> OrExpressio
     OrExpression::Term(AndExpression::Expression(terms))
 }
 
-// the top-level disjuncts of an expression.
+// the top-level disjuncts (OR) of an expression.
 pub(crate) fn into_or_terms(expression: OrExpression) -> Vec<AndExpression> {
     match expression {
         OrExpression::Term(term) => vec![term],

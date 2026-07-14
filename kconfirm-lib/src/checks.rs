@@ -5,17 +5,23 @@ use crate::{
         Severity, //
     },
     symbol_table::{
-        unconditional_visibility,
         AttributeDef,
         TypeInfo, //
     },
 };
 use log::error;
-use nom_kconfig::attribute::{
-    AndExpression,
-    Expression,
-    Term,
-    range::RangeBound, //
+use nom_kconfig::{
+    Symbol,
+    attribute::{
+        AndExpression,
+        Atom,
+        Expression,
+        OrExpression,
+        Term,
+        range::RangeBound, //
+    },
+    symbol::ConstantSymbol,
+    tristate::Tristate,
 };
 use std::{
     collections::HashSet,
@@ -447,6 +453,14 @@ pub fn check_variable_info(
     findings
 }
 
+/// The visibility condition of an unconditionally-visible `config` option
+/// (unconditional prompt): constant `y`.
+pub(crate) fn unconditional_visibility() -> Expression {
+    OrExpression::Term(AndExpression::Term(Term::Atom(Atom::Symbol(
+        Symbol::Constant(ConstantSymbol::Tristate(Tristate::Yes)),
+    ))))
+}
+
 // TODO: also check if a config option in one arch unconditionally references a config option that only exists in another arch (need SMT for this first)
 pub fn check_select_visible(var_symbol: &str, info: &TypeInfo) -> Vec<Finding> {
     let mut findings = Vec::new();
@@ -474,28 +488,7 @@ pub fn check_select_visible(var_symbol: &str, info: &TypeInfo) -> Vec<Finding> {
                     // there's no config option definition specifically under the architecture that this config option gets selected,
                     // so let's check if it's defined for all archs (arch-independent)
                     if let Some(no_arch_attribute_def) = info.attribute_defs.get(&None) {
-                        for (if_conditions, attributes) in no_arch_attribute_def {
-                            if if_conditions.is_empty()
-                                && attributes.visibility == Some(unconditional_visibility())
-                            {
-                                // an unconditional prompt means it is unconditionally visible, within the current arch (assuming arch is not `None`)
-
-                                findings.push(Finding {
-                                    severity: Severity::Warning,
-                                    check: Check::SelectVisible,
-                                    symbol: Some(selector.to_owned()),
-                                    message: message.clone(),
-                                    arch: arch.to_owned(),
-                                });
-                            }
-                        }
-                    }
-                }
-                Some(cur_arch_attribute_def) => {
-                    for (if_conditions, attributes) in cur_arch_attribute_def {
-                        if if_conditions.is_empty()
-                            && attributes.visibility == Some(unconditional_visibility())
-                        {
+                        if no_arch_attribute_def.visibility == Some(unconditional_visibility()) {
                             // an unconditional prompt means it is unconditionally visible, within the current arch (assuming arch is not `None`)
 
                             findings.push(Finding {
@@ -506,6 +499,19 @@ pub fn check_select_visible(var_symbol: &str, info: &TypeInfo) -> Vec<Finding> {
                                 arch: arch.to_owned(),
                             });
                         }
+                    }
+                }
+                Some(cur_arch_attribute_def) => {
+                    if cur_arch_attribute_def.visibility == Some(unconditional_visibility()) {
+                        // an unconditional prompt means it is unconditionally visible, within the current arch (assuming arch is not `None`)
+
+                        findings.push(Finding {
+                            severity: Severity::Warning,
+                            check: Check::SelectVisible,
+                            symbol: Some(selector.to_owned()),
+                            message: message.clone(),
+                            arch: arch.to_owned(),
+                        });
                     }
                 }
             }
@@ -527,22 +533,39 @@ fn check_duplicate_dependencies(
     let mut findings = Vec::new();
     let mut seen = HashSet::new();
 
-    // kconfirm-desugar combines a config's dependencies into a single expression,
-    // so there is at most one to consider here.
+    // kconfirm-desugar ANDs every `depends on` of a config into one combined
+    // expression without deduplicating, so `depends on X` written twice — or an
+    // explicit `depends on X` inside `if X` — becomes `X && X`. Split the combined
+    // dependency back into its top-level AND-terms and flag any repeat.
     if let Some(dep) = &info.kconfig_dependencies {
-        if is_duplicate(&mut seen, dep.to_string()) {
-            let message = format!("duplicate dependency on {}", dep.to_string());
-            findings.push(Finding {
-                severity: Severity::Warning,
-                check: Check::DuplicateDependency,
-                symbol: Some(var_symbol.to_owned()),
-                message,
-                arch: arch_specific.to_owned(),
-            });
+        for term in dependency_and_terms(dep) {
+            if is_duplicate(&mut seen, term.clone()) {
+                findings.push(Finding {
+                    severity: Severity::Warning,
+                    check: Check::DuplicateDependency,
+                    symbol: Some(var_symbol.to_owned()),
+                    message: format!("duplicate dependency on {}", term),
+                    arch: arch_specific.to_owned(),
+                });
+            }
         }
     }
 
     findings
+}
+
+/// Top-level AND-terms of a (desugared) dependency, as strings. A bare term or a
+/// conjunction `A && B` yields its individual terms; a top-level disjunction
+/// (`A || B`) has no top-level conjuncts and is treated as one unit. Mirrors
+/// `into_and_terms` in kconfirm-desugar.
+fn dependency_and_terms(expression: &OrExpression) -> Vec<String> {
+    match expression {
+        OrExpression::Term(AndExpression::Term(term)) => vec![term.to_string()],
+        OrExpression::Term(AndExpression::Expression(terms)) => {
+            terms.iter().map(|t| t.to_string()).collect()
+        }
+        OrExpression::Expression(_) => vec![expression.to_string()],
+    }
 }
 
 fn check_duplicate_implies(

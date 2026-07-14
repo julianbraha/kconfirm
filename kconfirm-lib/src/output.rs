@@ -68,11 +68,13 @@ pub struct Finding {
 
 impl Finding {
     fn fmt_with_arches(&self, f: &mut fmt::Formatter, arches: &[&str]) -> fmt::Result {
-        let arch_part = if arches.is_empty() {
-            String::new()
-        } else {
-            format!(" [{}]", arches.join(", "))
-        };
+        let arch_part =
+            // don't write the arches if it's not arch-specific
+            if arches.is_empty() || arches.len() == 21 { // 21 architectures, TODO: stop hard-coding this, but we can't import kconfirm-linux or we get a dependency cycle
+                String::new()
+            } else {
+                format!(" [{}]", arches.join(", "))
+            };
 
         match &self.symbol {
             Some(s) => write!(

@@ -46,12 +46,6 @@ fn test_coreboot_kconfig_analysis_v24_12() {
             "--coreboot-dir-path",
         ])
         .arg(&extract_dir)
-        .args([
-            "--disable-check",
-            "all",
-            "--enable-check",
-            "duplicate_default_value,ungrouped_attribute",
-        ])
         .output()
         .expect("failed to run cargo");
 
@@ -65,8 +59,8 @@ fn test_coreboot_kconfig_analysis_v24_12() {
     let line_count = stdout.lines().count();
 
     assert!(
-        line_count == 275,
-        "expected 275 lines, got {}\n See output:\n{}",
+        line_count == 289,
+        "expected 289 lines, got {}\n See output:\n{}",
         line_count,
         stdout
     );

@@ -4,33 +4,35 @@ name = "kconfirm"
 repository = "https://github.com/julianbraha/kconfirm"
 license-file = "LICENSE"
 description = "A static analysis tool for Kconfig"
-keywords = ["kconfig", "static", "analysis", "detect"]
+keywords = ["kconfig", "static", "analysis", "detect", "smt"]
 categories = ["development-tools", "config", "command-line-utilities"]
 exclude = ["assets/", "findings/"]
-version = "0.9.0"
+version = "1.0.0"
 edition = "2024"
 
 [workspace]
 members = [
     "kconfirm-lib",
+    "kconfirm-cli",
     "kconfirm-linux",
     "kconfirm-desugar",
     "kconfirm-smt",
-]
-resolver = "3"
+    "z3-ternary"]
 
 [workspace.package]
 rust-version = "1.85.0"
 
 [workspace.dependencies]
-nom-kconfig = { version = "0.12", default-features = false, features = [
+# my fork
+nom-kconfig = { git = "https://github.com/julianbraha/nom-kconfig", rev = "1870a9b234543dd4abdd984b849bc9030684f59f", default-features = false, features = [
     "display",
     "kconfiglib"
 ] }
+
 log = "0.4"
 env_logger = "0.11"
 libc = "0.2"
-z3 = "0.20"
+z3 = { version = "0.20", features = ["z3_4_16"] }
 
 [profile.release]
 lto = true

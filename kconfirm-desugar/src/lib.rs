@@ -2,11 +2,14 @@ mod combine_depends;
 mod distribute_choice;
 mod distribute_if;
 mod distribute_menu;
+mod distribute_menu_visible;
+mod eliminate_default_n;
 mod expand_def_type;
 mod expand_depends_if;
 mod expand_source;
 mod expand_type_prompt;
 mod merge_partial_defs;
+mod rewrite_m;
 mod utils;
 
 #[cfg(test)]
@@ -46,6 +49,15 @@ pub fn desugar_kconfig(source: Source) -> Vec<Entry> {
     // a bit more efficient to run expand_type_prompt before expand_def_type
     let entries = expand_type_prompt::visit_entries(entries);
 
+    // folds each menu's `visible if` condition into the prompt conditions of
+    // the config options it contains — prompts only: dependencies, selects,
+    // and defaults are unaffected, matching kconfig, where an option under a
+    // hidden menu still takes its default but cannot be set by the user.
+    // must run after expand_type_prompt (prompts are standalone attributes)
+    // and before merge_partial_defs (which can move attributes out of the
+    // menu).
+    let entries = distribute_menu_visible::visit_entries(entries);
+
     // expands def_bool and def_tristate into 2 attributes: default + bool/tristate
     // also asserts that there are no more prompts in type definitions
     let entries = expand_def_type::visit_entries(entries);
@@ -63,6 +75,18 @@ pub fn desugar_kconfig(source: Source) -> Vec<Entry> {
     // TODO: is there an ordering of passes that wouldn't require a second pass of this?
     //       im pretty sure we'd need to rework at least one of the other passes...
     let entries = expand_depends_if::visit_entries(entries);
+
+    // removes each bool/tristate config's trailing `default n`: options fall back to n
+    // when no default fires, so a final `default n` never changes the option's value
+    let entries = eliminate_default_n::visit_entries(entries);
+
+    // applies kconfig's rewrite_m (menu.c): the constant `m` in every
+    // condition becomes `(m && MODULES)`
+    // NOTE: becomes `n` in a tree without a modules option, but value expressions
+    // (e.g. `default m`) keep their raw m.
+    let entries = rewrite_m::visit_entries(entries);
+
+    // TODO: consider eliminating comment entries
 
     entries
 }

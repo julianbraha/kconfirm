@@ -5,12 +5,12 @@ use nom_kconfig::{
     entry::Config, //
 };
 
-/// Distributes each `choice`'s dependencies down onto every `config` option it
-/// contains (recursively, through nested menus and choices). In Kconfig
-/// semantics the items inside a choice inherit the choice's dependencies.
+/// Distributes each `choice`'s dependencies onto every `config` option it
+/// contains (recursively, through nested menus and choices).
 ///
 /// The choice keeps its own dependency `options`; we only *copy* the
-/// dependencies down onto the contained config options.
+/// dependencies down onto the contained config options. (Will be combined by
+/// the next pass)
 pub fn visit_entries(entries: Vec<Entry>) -> Vec<Entry> {
     entries.into_iter().map(visit_entry).collect()
 }
@@ -46,7 +46,7 @@ fn depends_on_options(options: &[Attribute]) -> Vec<DependsOn> {
 }
 
 /// Add each of `deps` as a `depends on` to every config option in `entries`,
-/// descending through nested menus and choices.
+/// descending nested menus and choices.
 fn add_dependencies(entries: Vec<Entry>, deps: &[DependsOn]) -> Vec<Entry> {
     entries
         .into_iter()

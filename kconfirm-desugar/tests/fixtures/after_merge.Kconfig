@@ -1,0 +1,14 @@
+config A
+  bool "a"
+
+config B
+  bool "b"
+
+config Y
+  bool
+  select B if A
+  prompt "y" if B
+  select A if B
+
+config X
+  bool "x"

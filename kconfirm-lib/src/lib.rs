@@ -5,14 +5,16 @@ mod checks;
 mod dead_links;
 pub mod output;
 mod symbol_table;
-
+use kconfirm_desugar::desugar_kconfig;
 use nom_kconfig::{
     Entry,
     KconfigInput,
+    entry::Source,
     parse_kconfig, //
 };
 
 pub use analyze::analyze;
+use analyze::check_attribute_grouping;
 pub use checks::{
     AnalysisArgs,
     Check,
@@ -67,7 +69,24 @@ pub fn check_kconfig(
     for (arch_config_option, kconfig_file) in kconfig_files {
         match parse_kconfig(kconfig_file) {
             Ok(parsed) => {
-                let entries: Vec<Entry> = parsed.1.entries;
+                let kconfig = parsed.1;
+
+                // The "ungrouped attribute" style check must run on the raw parsed
+                // entries: desugaring combines every `depends on` into one attribute
+                // and reorders/splits others, erasing the original source attribute
+                // grouping this check reports on.
+                check_attribute_grouping(
+                    &args,
+                    &arch_config_option,
+                    &kconfig.entries,
+                    &mut findings,
+                );
+
+                let source = Source {
+                    kconfigs: vec![kconfig],
+                };
+
+                let entries: Vec<Entry> = desugar_kconfig(source);
                 findings.extend(analyze(
                     &args,
                     &mut symbol_table,
@@ -88,10 +107,8 @@ pub fn check_kconfig(
     }
 
     for (var_symbol, type_info) in &symbol_table.raw {
-        for (arch_specific, redefinitions) in &type_info.attribute_defs {
-            for (_definition_condition, info) in redefinitions {
-                findings.extend(check_variable_info(&args, var_symbol, arch_specific, info));
-            }
+        for (arch_specific, info) in &type_info.attribute_defs {
+            findings.extend(check_variable_info(&args, var_symbol, arch_specific, info));
         }
 
         if args.is_enabled(Check::SelectVisible) {

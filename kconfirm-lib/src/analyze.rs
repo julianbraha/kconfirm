@@ -1,21 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0-only
 use crate::{
+    AnalysisArgs, AttributeDef, Check, SymbolTable,
+    checks::unconditional_visibility,
     dead_links::{
         self,
-        check_link, //
         LinkStatus,
+        check_link, //
     },
     output::{
         Finding,
         Severity, //
     },
-    symbol_table::{
-        unconditional_visibility,
-        ChoiceData, //
-    },
-    AnalysisArgs,
-    Check,
-    SymbolTable,
+    symbol_table::ChoiceData,
 };
 use log::{
     debug,
@@ -23,12 +19,14 @@ use log::{
     warn, //
 };
 use nom_kconfig::{
+    Attribute::*,
+    Entry,
     attribute::{
-        r#type::Type, //
         DefaultAttribute,
         Expression,
         Imply,
         Select,
+        r#type::Type, //
     },
     entry::{
         Choice,
@@ -37,8 +35,6 @@ use nom_kconfig::{
         Menu,
         Source, //
     },
-    Attribute::*,
-    Entry,
 };
 use std::{
     collections::HashSet,
@@ -110,6 +106,88 @@ impl AttributeGroupingChecker {
                 self.current_group = Some(group);
             }
         }
+    }
+}
+
+/// Runs the "ungrouped attribute" style check on the raw parsed `entries`.
+///
+/// This must run *before* desugaring: `kconfirm-desugar` combines every
+/// `depends on` of a config into a single attribute and reorders/splits others,
+/// which destroys the original source grouping that this style check reports on.
+/// Recurses into menus, choices, `if` blocks and sourced files, mirroring
+/// [`process_entry`].
+pub(crate) fn check_attribute_grouping(
+    args: &AnalysisArgs,
+    arch: &Option<String>,
+    entries: &[Entry],
+    findings: &mut Vec<Finding>,
+) {
+    for entry in entries {
+        match entry {
+            Entry::Config(config) | Entry::MenuConfig(config) => {
+                check_config_grouping(args, arch, config, findings);
+            }
+            Entry::Menu(menu) => check_attribute_grouping(args, arch, &menu.entries, findings),
+            Entry::Choice(choice) => {
+                check_attribute_grouping(args, arch, &choice.entries, findings)
+            }
+            Entry::If(r#if) => check_attribute_grouping(args, arch, &r#if.entries, findings),
+            Entry::Source(source) => {
+                for sourced in &source.kconfigs {
+                    check_attribute_grouping(args, arch, &sourced.entries, findings);
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+// Checks that a single config's functional attributes (dependencies, selects,
+// implies, ranges, defaults) are each kept contiguous in the source. The
+// def_bool/def_tristate hybrid type+default forms group with the defaults.
+fn check_config_grouping(
+    args: &AnalysisArgs,
+    arch: &Option<String>,
+    config: &Config,
+    findings: &mut Vec<Finding>,
+) {
+    let mut checker = AttributeGroupingChecker::new();
+    for attribute in &config.attributes {
+        let (group, message) = match attribute {
+            Type(kconfig_type) => match &kconfig_type.r#type {
+                Type::DefBool(db) => (
+                    FunctionalAttributes::Defaults,
+                    format!("ungrouped default {}", db),
+                ),
+                Type::DefTristate(dt) => (
+                    FunctionalAttributes::Defaults,
+                    format!("ungrouped default {}", dt),
+                ),
+                _ => continue,
+            },
+            Default(default) => (
+                FunctionalAttributes::Defaults,
+                format!("ungrouped default {}", default),
+            ),
+            DependsOn(depends_on) => (
+                FunctionalAttributes::Dependencies,
+                format!("ungrouped dependency {}", depends_on),
+            ),
+            Select(select) => (
+                FunctionalAttributes::Selects,
+                format!("ungrouped select {}", select),
+            ),
+            Imply(imply) => (
+                FunctionalAttributes::Implies,
+                format!("ungrouped imply {}", imply),
+            ),
+            Range(r) => (
+                FunctionalAttributes::Ranges,
+                format!("ungrouped range {}", r),
+            ),
+            _ => continue,
+        };
+        checker.check(group, args, findings, &config.symbol, arch, message);
     }
 }
 
@@ -262,7 +340,7 @@ fn handle_config(
         config_symbol
     );
 
-    let mut child_ctx = ctx.child();
+    let child_ctx = ctx.child();
 
     let mut config_type = None;
     // kconfirm-desugar combines every `depends on` (including those inherited
@@ -278,11 +356,9 @@ fn handle_config(
     let mut visibility: Option<Expression> = None;
 
     debug!("attributes are: {:?}", &entry.attributes);
-    /*
-     * style check: ungrouped attributes
-     * - need to check that dependencies, selects, ranges, and defaults are each kept together.
-     */
-    let mut attribute_grouping_checker = AttributeGroupingChecker::new();
+    // The "ungrouped attribute" style check runs on the raw entries via
+    // `check_attribute_grouping` (called before desugaring), because desugaring
+    // reorders and combines the attributes iterated below.
     let mut dead_link_checker = DeadLinkChecker::new();
     for attribute in entry.attributes {
         match attribute {
@@ -296,16 +372,6 @@ fn handle_config(
 
                     kconfig_defaults.push(default_attribute);
                     config_type = Some(kconfig_type);
-
-                    // NOTE: as a style, we prefer to keep the hybrid default-typedef with the standalone defaults
-                    attribute_grouping_checker.check(
-                        FunctionalAttributes::Defaults,
-                        args,
-                        findings,
-                        &config_symbol,
-                        &ctx.arch,
-                        format!("ungrouped default {}", db),
-                    );
                 }
                 Type::Bool(_prompt) => {
                     config_type = Some(kconfig_type);
@@ -313,16 +379,6 @@ fn handle_config(
 
                 // hybrid type definition and default
                 Type::DefTristate(dt) => {
-                    // NOTE: as a style, we prefer to keep the hybrid default-typedef with the standalone defaults
-                    attribute_grouping_checker.check(
-                        FunctionalAttributes::Defaults,
-                        args,
-                        findings,
-                        &config_symbol,
-                        &ctx.arch,
-                        format!("ungrouped default {}", &dt),
-                    );
-
                     let default_attribute: DefaultAttribute = DefaultAttribute {
                         expression: dt,
                         r#if: kconfig_type.clone().r#if,
@@ -348,28 +404,10 @@ fn handle_config(
                 }
             },
             Default(default) => {
-                attribute_grouping_checker.check(
-                    FunctionalAttributes::Defaults,
-                    args,
-                    findings,
-                    &config_symbol,
-                    &ctx.arch,
-                    format!("ungrouped default {}", &default),
-                );
-
                 kconfig_defaults.push(default);
             }
 
             DependsOn(depends_on) => {
-                attribute_grouping_checker.check(
-                    FunctionalAttributes::Dependencies,
-                    args,
-                    findings,
-                    &config_symbol,
-                    &ctx.arch,
-                    format!("ungrouped dependency {}", &depends_on),
-                );
-
                 // kconfirm-desugar has already combined all `depends on`
                 // attributes into a single one, so we expect to see at most one.
                 debug_assert!(
@@ -379,42 +417,15 @@ fn handle_config(
                 kconfig_dependencies = Some(depends_on.expression);
             }
             Select(select) => {
-                attribute_grouping_checker.check(
-                    FunctionalAttributes::Selects,
-                    args,
-                    findings,
-                    &config_symbol,
-                    &ctx.arch,
-                    format!("ungrouped select {}", &select),
-                );
-
                 kconfig_selects.push(select);
             }
             Imply(imply) => {
-                attribute_grouping_checker.check(
-                    FunctionalAttributes::Implies,
-                    args,
-                    findings,
-                    &config_symbol,
-                    &ctx.arch,
-                    format!("ungrouped imply {}", imply),
-                );
-
                 kconfig_implies.push(imply);
 
                 // TODO: may be relevant for nonvisible config options when building an SMT model...
             }
             // NOTE: range bounds are inclusive
             Range(r) => {
-                attribute_grouping_checker.check(
-                    FunctionalAttributes::Ranges,
-                    args,
-                    findings,
-                    &config_symbol,
-                    &ctx.arch,
-                    format!("ungrouped range {}", r),
-                );
-
                 kconfig_ranges.push(r);
             }
             Help(h) => {
@@ -479,103 +490,49 @@ fn handle_config(
         }
     }
 
-    symtab.merge_insert_new_solved(
+    symtab.insert_definition(
         config_symbol.clone(),
-        kconfig_type,
-        kconfig_dependencies,
-        //z3_dependency,
-        kconfig_ranges,
-        kconfig_defaults,
-        visibility,
         child_ctx.arch.clone(),
-        child_ctx.definition_condition.clone(),
-        None,
-        None,
-        kconfig_selects
-            .clone()
-            .into_iter()
-            .map(|sel| (sel.symbol, sel.r#if))
-            .collect(),
-        kconfig_implies
-            .clone()
-            .into_iter()
-            .map(|imply| (imply.symbol.to_string(), imply.r#if))
-            .collect(),
+        kconfig_type,
+        AttributeDef {
+            kconfig_dependencies: kconfig_dependencies,
+            kconfig_ranges: kconfig_ranges,
+            kconfig_defaults: kconfig_defaults,
+            visibility: visibility,
+            selects: kconfig_selects
+                .clone()
+                .into_iter()
+                .map(|sel| (sel.symbol, sel.r#if))
+                .collect(),
+            implies: kconfig_implies
+                .clone()
+                .into_iter()
+                .map(|imply| (imply.symbol.to_string(), imply.r#if))
+                .collect(),
+        },
     );
     // TODO: file a github issue, imply can never imply a constant (this is technically parsing incorrectly)
 
     // need to add the select condition to the definedness condition if it exists
     for select in kconfig_selects {
-        match select.r#if {
-            None => symtab.merge_insert_new_solved(
-                select.symbol,
-                None,
-                None,
-                Vec::new(),
-                Vec::new(),
-                None,
-                child_ctx.arch.clone(),
-                child_ctx.definition_condition.clone(),
-                Some((config_symbol.clone(), None)),
-                None,
-                Vec::new(),
-                Vec::new(),
-            ),
-            Some(select_condition) => {
-                symtab.merge_insert_new_solved(
-                    select.symbol,
-                    None,
-                    None,
-                    Vec::new(),
-                    Vec::new(),
-                    None,
-                    child_ctx.arch.clone(),
-                    child_ctx.definition_condition.clone(),
-                    Some((config_symbol.clone(), Some(select_condition))),
-                    None,
-                    Vec::new(),
-                    Vec::new(),
-                );
-            }
-        }
+        symtab.add_selected_by(
+            select.symbol,
+            child_ctx.arch.clone(),
+            config_symbol.clone(),
+            select.r#if,
+        );
     }
 
     // keep track of the implier in the implied option's `implied_by` list, the same way we
     // track selectors in `selected_by`. `imply` references a `Symbol`, which we store as a
     // string like other references to config options.
     for imply in kconfig_implies {
-        match imply.r#if {
-            None => symtab.merge_insert_new_solved(
-                imply.symbol.to_string(),
-                None,
-                None,
-                Vec::new(),
-                Vec::new(),
-                None,
-                child_ctx.arch.clone(),
-                child_ctx.definition_condition.clone(),
-                None,
-                Some((config_symbol.clone(), None)),
-                Vec::new(),
-                Vec::new(),
-            ),
-            Some(imply_condition) => {
-                symtab.merge_insert_new_solved(
-                    imply.symbol.to_string(),
-                    None,
-                    None,
-                    Vec::new(),
-                    Vec::new(),
-                    None,
-                    child_ctx.arch.clone(),
-                    child_ctx.definition_condition.clone(),
-                    None,
-                    Some((config_symbol.clone(), Some(imply_condition))),
-                    Vec::new(),
-                    Vec::new(),
-                );
-            }
-        }
+        symtab.add_implied_by(
+            imply.symbol.to_string(), // TODO: report issue on nom-kconfig, this should be a string too, I think (like select.symbol)
+            child_ctx.arch.clone(),
+            config_symbol.clone(),
+            imply.r#if,
+        );
     }
 }
 
@@ -644,6 +601,17 @@ fn handle_choice(
     // all of the variables in the choice menu
     //let mut contained_vars = Vec::with_capacity(c.entries.len());
     let nested_entries = entry.entries;
+    let nested_entries_count = (&nested_entries).len();
+
+    let mut contained_config_symbols = Vec::with_capacity(nested_entries_count);
+
+    for entry in &nested_entries {
+        match entry {
+            Entry::Config(c) => contained_config_symbols.push(c.symbol.clone()),
+            Entry::Comment(_) => {}
+            _ => unreachable!("unexpected entry in a choice: {:?}", entry),
+        }
+    }
 
     recurse_entries(args, symtab, nested_entries, child_ctx.clone(), findings);
 
@@ -653,6 +621,7 @@ fn handle_choice(
         visibility: choice_visibility_condition,
         dependencies,
         defaults,
+        config_options: contained_config_symbols,
     };
     symtab.choices.push(choice_data);
 }

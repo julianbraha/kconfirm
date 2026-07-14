@@ -1,0 +1,24 @@
+config A
+  bool "a"
+
+config B
+  bool "b"
+
+config Y
+  bool
+
+config X
+  bool "x"
+
+if X
+config Y
+  depends on A
+  select B
+endif
+
+if !X
+config Y
+  prompt "y"
+  select A
+  depends on B
+endif
