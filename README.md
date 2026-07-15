@@ -18,7 +18,7 @@ E.g.:
 - Multiple partial definitions of configuration options are merged in `kconfirm-desugar`.
 - The evaluation order of defaults is preserved.
 - Visibility / prompt conditions are modeled.
-  - Each config option has an additional `visility` variable in the model (also used for writing configurations to a `.config` file)
+  - Each config option has an additional `visibility` variable in the model (also used for writing configurations to a `.config` file)
 
 ## Limitations:
 - Shell macros are currently preprocessed the same way that the Linux build system does it.
@@ -46,7 +46,7 @@ bash differential_test_model_config.sh
 Differential test 2: *is the model over-constrained?*
 ```
 # generates a random configuration 
-# from Linux v7.2-rc3 with `make olddefconfig` 
+# from Linux v7.2-rc3 with `make randconfig`
 # then adds its option settings as constraints on the SMT model
 # checks if the model is still satisfiable:
 
