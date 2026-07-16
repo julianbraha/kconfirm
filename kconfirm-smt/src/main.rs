@@ -79,7 +79,7 @@ fn main() {
     // 1. the ARCH variable when set, otherwise
     // 2. derived from `uname -m`
     let arch = kconfirm_linux::infer_arch();
-    log::info!("using arch {arch} (from $ARCH or uname -m, like the kernel Makefile)");
+    log::info!("using arch {arch} (from $ARCH or `uname -m` if not set)");
     let macros = MacroOptions {
         load: args.load_preproc,
         dump: args.dump_preproc,
