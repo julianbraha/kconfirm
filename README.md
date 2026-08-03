@@ -76,7 +76,7 @@ Generate a random solution to the model and output it as a valid Linux .config f
 
 Check for unmet dependency bugs:
 ```
-./target/release/kconfirm-smt --check-unmet-dep --linux INPUT_PATH
+./target/release/kconfirm-smt --check-unmet-deps --output-witness-dir WITNESSES --linux INPUT_PATH
 ```
 
 ## Special Thanks

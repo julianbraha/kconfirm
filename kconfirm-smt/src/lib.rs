@@ -71,16 +71,17 @@ pub struct MacroOptions {
 
 /// What to do with the model once its constraints are built.
 pub enum RunMode {
-    /// Check satisfiability, write a witness .config from the model, and
-    /// (unless disabled) run the unmet-dependency sweep.
+    /// Export the SMT-LIB2 model and optionally generate configuration witnesses.
     Model {
-        config_output: PathBuf,
+        config_output: Option<PathBuf>,
         constraints_output: PathBuf,
         /// Randomize the Z3 solver's decision phases with this seed, so each
         /// run yields a different witness (for differential testing).
         seed: Option<u32>,
         /// Whether to run the unmet-dependency sweep after the main check.
         sweep: bool,
+        /// Directory for unmet-dependency witnesses when `sweep` is enabled.
+        witness_directory: Option<PathBuf>,
     },
     /// For differential testing: read an existing .config (e.g. from
     /// `make randconfig`), assert its values as constraints, and check that
@@ -934,49 +935,65 @@ pub fn model_kconfig(path: PathBuf, mode: RunMode, macros: MacroOptions) -> bool
         config_output,
         constraints_output,
         sweep,
+        witness_directory,
         ..
     } = mode
     else {
         unreachable!("CheckConfig returned above");
     };
 
+    match std::fs::write(&constraints_output, &solver.to_string()) {
+        Ok(()) => info!(
+            "Wrote SMT-LIB2 constraints to {}",
+            constraints_output.display(),
+        ),
+        Err(e) => error!("failed to write {}: {e}", constraints_output.display()),
+    }
+
+    if config_output.is_none() && !sweep {
+        info!("No witness output requested. Skipping satisfiability check.");
+        return true;
+    }
+
     info!("All variables and constraints added. Checking satisfiability...");
     let is_sat = solver.check();
     info!("Solver result: {is_sat:?}");
     match is_sat {
         SatResult::Sat => {
-            let model = solver.get_model().expect("a sat check produces a model");
-            let config = render_config(
-                &model,
-                &writable_symbols,
-                &writable_members,
-                &writable_ints,
-                &writable_strings,
-            );
-            let emitted_lines = config
-                .lines()
-                .filter(|line| line.starts_with("CONFIG_") || line.starts_with("# CONFIG_"))
-                .count();
+            if let Some(config_output) = &config_output {
+                let model = solver.get_model().expect("a sat check produces a model");
+                let config = render_config(
+                    &model,
+                    &writable_symbols,
+                    &writable_members,
+                    &writable_ints,
+                    &writable_strings,
+                );
+                let emitted_lines = config
+                    .lines()
+                    .filter(|line| line.starts_with("CONFIG_") || line.starts_with("# CONFIG_"))
+                    .count();
 
-            match std::fs::write(&config_output, &config) {
-                Ok(()) => info!(
-                    "Random configuration generated. {emitted_lines} config lines written to {} ",
-                    config_output.display(),
-                ),
-                Err(e) => error!("failed to write {}: {e}", config_output.display()),
+                match std::fs::write(config_output, &config) {
+                    Ok(()) => info!(
+                        "Random configuration generated. {emitted_lines} config lines written to {} ",
+                        config_output.display(),
+                    ),
+                    Err(e) => error!("failed to write {}: {e}", config_output.display()),
+                }
             }
 
-            match std::fs::write(&constraints_output, &solver.to_string()) {
-                Ok(()) => info!(
-                    "Wrote SMT-LIB2 constraints to {}",
-                    constraints_output.display(),
-                ),
-                Err(e) => error!("failed to write {}: {e}", config_output.display()),
-            }
-
-            if !sweep {
-                info!("User didn't pass --check-unmet-deps. Skipping the unmet dependency check.");
-            } else {
+            if sweep {
+                let witness_directory = witness_directory
+                    .as_ref()
+                    .expect("--check-unmet-deps requires --output-witness-dir");
+                if let Err(e) = std::fs::create_dir_all(witness_directory) {
+                    error!(
+                        "failed to create witness directory {}: {e}",
+                        witness_directory.display()
+                    );
+                    return false;
+                }
                 info!(
                     "checking {} select edges for unmet dependencies...",
                     unmet_dep_checks.len()
@@ -1006,7 +1023,7 @@ pub fn model_kconfig(path: PathBuf, mode: RunMode, macros: MacroOptions) -> bool
                                 witness_name = format!("{base}-{counter}.config");
                                 counter += 1;
                             }
-                            let witness_path = config_output.with_file_name(&witness_name);
+                            let witness_path = witness_directory.join(&witness_name);
 
                             match std::fs::write(&witness_path, &config) {
                                 Ok(()) => error!(

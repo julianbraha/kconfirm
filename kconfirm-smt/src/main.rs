@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
-use clap::Parser;
-use kconfirm_smt::{MacroOptions, RunMode, model_kconfig};
+use clap::{error::ErrorKind, CommandFactory, Parser};
+use kconfirm_smt::{model_kconfig, MacroOptions, RunMode};
 
 /// SMT feature model for the Linux kernel's Kconfig.
 #[derive(Parser)]
@@ -11,10 +11,10 @@ struct Args {
     #[arg(long)]
     linux: PathBuf,
 
-    /// Where to write the generated witness .config (ignored with
-    /// --check-config; unmet-dependency witnesses are written next to it)
-    #[arg(long, default_value = "witness.config")]
-    output_config: PathBuf,
+    /// Where to write a generated random witness .config. When omitted, only
+    /// the SMT-LIB2 model is exported and no satisfiability check is run.
+    #[arg(long, value_name = "FILE")]
+    output_config: Option<PathBuf>,
 
     /// Where to write the SMT-LIB constraints
     #[arg(long, default_value = "constraints.smt2")]
@@ -24,8 +24,7 @@ struct Args {
     /// then the model will set its options as constraints, and generate random settings
     /// for the rest of the (unconstrained) options.
     ///
-    /// Outputs the random configuration to witness.config by default, or you can set
-    /// the --output-config path to something else.
+    /// The random configuration is written only when --output-config is supplied.
     ///
     /// For differential testing: pass a complete .config from the real kconfig interpreter,
     /// for example, with `make randconfig`.
@@ -44,6 +43,10 @@ struct Args {
     /// Check for unmet dependency bugs.
     #[arg(long)]
     check_unmet_deps: bool,
+
+    /// Directory for .config witnesses produced by --check-unmet-deps.
+    #[arg(long, value_name = "DIR")]
+    output_witness_dir: Option<PathBuf>,
 
     /// Use macro/function values from FILE for pre-processing, instead of evaluating:
     /// scripts/Kconfig.include from the target linux source and $(...) probes
@@ -66,6 +69,16 @@ fn main() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     let args = Args::parse();
+    if args.add_constraints.is_none() && args.check_unmet_deps && args.output_witness_dir.is_none()
+    {
+        Args::command()
+            .error(
+                ErrorKind::MissingRequiredArgument,
+                "--check-unmet-deps requires --output-witness-dir DIR",
+            )
+            .exit();
+    }
+
     let mode = match args.add_constraints {
         Some(config_input) => RunMode::CheckConfig { config_input },
         None => RunMode::Model {
@@ -73,6 +86,7 @@ fn main() {
             constraints_output: args.output_smt_lib.clone(),
             seed: args.seed,
             sweep: args.check_unmet_deps,
+            witness_directory: args.output_witness_dir,
         },
     };
     // arch comes from the environment:

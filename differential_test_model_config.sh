@@ -6,6 +6,7 @@
 # Kconfig interpreter. All outputs are preserved:
 #
 # - preserves every generated witness
+# - preserves every exported SMT model
 # - preserves every seed
 # - preserves all model and kconfig logs
 # - preserves all recomputed configs
@@ -97,6 +98,7 @@ for i in $(seq 1 "$RUNS"); do
 
     work="$(mktemp -d)"
     witness="$work/witness.config"
+    constraints="$work/constraints.smt2"
 
     if [ -s "$MACRO_CACHE" ]; then
         macro_args=(--load-preproc "$MACRO_CACHE")
@@ -109,9 +111,10 @@ for i in $(seq 1 "$RUNS"); do
     if ! ARCH="$ARCH" "$BINARY" \
         --linux "$LINUX" \
         --output-config "$witness" \
+        --output-smt-lib "$constraints" \
         --seed "$seed" \
         "${macro_args[@]}" \
-        > "$work/model.log" 2>&1 || [ ! -s "$witness" ]; then
+        > "$work/model.log" 2>&1 || [ ! -s "$witness" ] || [ ! -s "$constraints" ]; then
 
         model_fail=$((model_fail + 1))
         fail=$((fail + 1))
@@ -132,6 +135,7 @@ for i in $(seq 1 "$RUNS"); do
 
     cp "$work/model.log" "$iteration_dir/model.log"
     cp "$witness" "$iteration_dir/witness.config"
+    cp "$constraints" "$iteration_dir/constraints.smt2"
 
 
     # Run real kconfig
