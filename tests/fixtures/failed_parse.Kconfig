@@ -6,4 +6,4 @@ config Y
 
 config Z
   bool
-  depends on Y if X # not actually valid
+  depends on # a `depends on` with no expression

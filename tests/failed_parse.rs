@@ -1,5 +1,4 @@
 mod common;
-use crate::common::count_findings;
 use crate::common::run_cli_on_fixture;
 
 #[test]
@@ -11,7 +10,10 @@ fn test_invalid_kconfig_fixture() {
         "duplicate_default_value,ungrouped_attribute",
         "dead_link",
     );
-    let findings = count_findings(&output);
+
+    // the parse error of nom-kconfig spans several lines, so we count the findings by their
+    // check name instead of by line, like the other tests do.
+    let findings = output.matches("[failed_parse]").count();
 
     let file_name = failed_parse_file.file_name().unwrap().to_string_lossy();
 

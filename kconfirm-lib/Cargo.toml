@@ -16,8 +16,14 @@ nom-kconfig = { workspace = true }
 curl = { version = "0.4" }
 log = { workspace = true }
 env_logger = { workspace = true }
-regex = { version = "1.12", default-features = false }
+# `std` gives the `Error` impl and the runtime CPU-feature detection,
+# `unicode-perl` gives the `\s` class that the link pattern uses.
+# NOTE: nom-kconfig 0.10 pulled these features in for us, 0.12 does not depend on regex.
+regex = { version = "1.12", default-features = false, features = [
+    "std",
+    "unicode-perl",
+] }
 
 [features]
 default = []
-coreboot = ["nom-kconfig/coreboot"]
+coreboot = ["nom-kconfig/glob-wildcard"]

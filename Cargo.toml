@@ -18,8 +18,9 @@ resolver = "3"
 rust-version = "1.85.0"
 
 [workspace.dependencies]
-nom-kconfig = { version = "0.10", default-features = false, features = [
+nom-kconfig = { git = "https://github.com/Mcdostone/nom-kconfig.git", branch = "fix/depends-on_with_compare", default-features = false, features = [
     "display",
+    "kconfiglib",
 ] }
 log = "0.4"
 env_logger = "0.11"

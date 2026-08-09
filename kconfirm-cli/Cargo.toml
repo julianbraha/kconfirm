@@ -8,7 +8,7 @@ rust-version.workspace = true
 kconfirm-lib = { path = "../kconfirm-lib", features = ["coreboot"] }
 kconfirm-linux = { path = "../kconfirm-linux" }
 
-nom-kconfig = { workspace = true, features = ["coreboot"] }
+nom-kconfig = { workspace = true, features = ["glob-wildcard"] }
 log = { workspace = true }
 clap = { version = "4.6", features = ["derive"] }
 env_logger = "0.11"

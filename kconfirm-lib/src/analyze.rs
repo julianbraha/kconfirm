@@ -27,6 +27,7 @@ use nom_kconfig::{
         Expression,
         Imply,
         Select,
+        depends_on::DependsOn as DependsOnAttribute,
         r#type::Type, //
     },
     entry::{
@@ -212,6 +213,24 @@ impl Context {
     }
 }
 
+/// Gets the expression of a `depends on` attribute.
+///
+/// Since nom-kconfig 0.12, a `depends on` also holds an optional `if` condition. kconfirm-lib does
+/// not desugar the condition yet, so the analysis uses the dependency expression alone. The
+/// `kconfirm-desugar` crate does this rewrite (`depends on X if Y` becomes
+/// `depends on X || (Y == n)`).
+fn depends_on_expression(depends_on: DependsOnAttribute) -> Expression {
+    if let Some(condition) = &depends_on.r#if {
+        warn!(
+            "ignoring the condition of 'depends on {} if {}', \
+             desugar the kconfig first for an accurate analysis",
+            depends_on.expression, condition,
+        );
+    }
+
+    depends_on.expression
+}
+
 fn recurse_entries(
     args: &AnalysisArgs,
     symtab: &mut SymbolTable,
@@ -349,6 +368,31 @@ fn handle_config(
                     kconfig_defaults.push(default_attribute);
                     config_type = Some(kconfig_type);
                 }
+                // hybrid type definition and default.
+                // these are kconfiglib extensions, they are not in the linux kconfig language.
+                Type::DefInt(d) | Type::DefHex(d) | Type::DefString(d) => {
+                    // NOTE: as a style, we prefer to keep the hybrid default-typedef with the standalone defaults
+                    attribute_grouping_checker.check(
+                        FunctionalAttributes::Defaults,
+                        args,
+                        findings,
+                        &config_symbol,
+                        &ctx.arch,
+                        format!("ungrouped default {}", &d),
+                    );
+
+                    let default_attribute: DefaultAttribute = DefaultAttribute {
+                        expression: d,
+                        r#if: kconfig_type.clone().r#if,
+                    };
+
+                    if let Some(c) = kconfig_type.clone().r#if {
+                        child_ctx = child_ctx.with_visibility(Some(c));
+                    }
+
+                    kconfig_defaults.push(default_attribute);
+                    config_type = Some(kconfig_type);
+                }
                 Type::Tristate(unconditional_prompt) => {
                     if unconditional_prompt.is_some() {
                         found_prompt = true;
@@ -417,7 +461,7 @@ fn handle_config(
                     format!("ungrouped dependency {}", &depends_on),
                 );
 
-                kconfig_dependencies.push(depends_on);
+                kconfig_dependencies.push(depends_on_expression(depends_on));
             }
             Select(select) => {
                 attribute_grouping_checker.check(
@@ -608,6 +652,7 @@ fn handle_menu(
     }
 
     for dep in entry.depends_on {
+        let dep = depends_on_expression(dep);
         child_ctx = child_ctx.with_dep(dep.clone());
         child_ctx = child_ctx.with_visibility(Some(dep)); // not a typo, the config options inside of a menu are only visible if the menu's dependencies are satisfied
     }
@@ -637,7 +682,7 @@ fn handle_choice(
     for attribute in entry.options {
         match attribute {
             DependsOn(depends_on) => {
-                child_ctx = child_ctx.with_dep(depends_on);
+                child_ctx = child_ctx.with_dep(depends_on_expression(depends_on));
             }
 
             Default(default) => {
@@ -693,7 +738,7 @@ fn handle_source(
     ctx: &Context,
     findings: &mut Vec<Finding>,
 ) {
-    let sourced_kconfig = entry.entries;
+    let sourced_kconfig = entry.kconfigs;
 
     for sourced_kconfig in sourced_kconfig {
         recurse_entries(args, symtab, sourced_kconfig.entries, ctx.clone(), findings);

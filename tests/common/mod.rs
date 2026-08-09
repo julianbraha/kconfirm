@@ -1,5 +1,7 @@
 use std::process::Command;
 
+// not every test binary that includes this module uses this helper
+#[allow(dead_code)]
 pub fn count_findings(output: &str) -> usize {
     // assumes each finding is one line
     output.lines().count()
