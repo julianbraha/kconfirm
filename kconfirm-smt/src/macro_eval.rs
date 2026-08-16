@@ -219,6 +219,15 @@ impl MacroEvaluator {
         });
         env.insert("ARCH".to_string(), arch.to_owned());
         env.insert("SRCARCH".to_string(), srcarch);
+        if arch == "um" {
+            // arch/um/Makefile exports the normalized host architecture.
+            // Without it, `$(SUBARCH)` becomes empty and UML's 64BIT option
+            // is incorrectly hidden and forced on by its default.
+            env.insert(
+                "SUBARCH".to_string(),
+                kconfirm_linux::UML_SUBARCH.to_string(),
+            );
+        }
         env.insert("srctree".to_string(), linux.display().to_string());
 
         // CC_VERSION_TEXT: the first line of `$(CC) --version` (Makefile)

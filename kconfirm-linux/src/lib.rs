@@ -27,6 +27,13 @@ pub const ALL_ARCHITECTURES: [&str; 21] = [
     "um",
 ];
 
+/// The host architecture implemented by UML in the Linux tree.
+///
+/// The kernel's `scripts/subarch.include` normalizes both x86_64 and i386
+/// hosts to `x86`. UML uses that value to expose its `64BIT` prompt, so the
+/// same Kconfig tree represents both its 32-bit and 64-bit configurations.
+pub const UML_SUBARCH: &str = "x86";
+
 // each architecture has its own directory, and config option.
 // most are the same, but powerpc / ppc and um / uml are not.
 // this maps the directory to the config option
@@ -120,8 +127,11 @@ pub fn collect_kconfig_root_files(
         let mut cur_root_kconfig_file = root_kconfig_file.clone();
 
         if arch_dir == "um" {
-            // this is only used by the 'um' architecture to include arch/x86/um/Kconfig
-            cur_root_kconfig_file.add_local_var("HEADER_ARCH", "x86");
+            // arch/um/Makefile exports both variables to Kconfig. HEADER_ARCH
+            // selects arch/x86/um/Kconfig, while SUBARCH controls whether its
+            // 64BIT option is user-selectable.
+            cur_root_kconfig_file.add_local_var("HEADER_ARCH", UML_SUBARCH);
+            cur_root_kconfig_file.add_local_var("SUBARCH", UML_SUBARCH);
         }
 
         cur_root_kconfig_file.add_local_var("SRCARCH", &arch_dir);
