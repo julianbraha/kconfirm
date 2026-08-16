@@ -6,6 +6,9 @@ use std::{
     path::PathBuf, //
 };
 
+/// The host architecture implemented by UML in the Linux tree.
+const UML_SUBARCH: &str = "x86";
+
 // each architecture has its own directory, and config option.
 // most are the same, but powerpc / ppc and um / uml are not.
 // this maps the directory to the config option
@@ -83,7 +86,15 @@ pub fn get_arch_kconfig_files(
                 Err(_) => continue,
             };
 
-            let kconfig_file = KconfigFile::new(linux_root.clone(), relative_path);
+            let mut kconfig_file = KconfigFile::new(linux_root.clone(), relative_path);
+
+            if arch_dir == "um" {
+                // arch/um/Makefile exports both variables to Kconfig. HEADER_ARCH
+                // selects arch/x86/um/Kconfig, while SUBARCH controls its
+                // host-architecture-dependent options.
+                kconfig_file.add_local_var("HEADER_ARCH", UML_SUBARCH);
+                kconfig_file.add_local_var("SUBARCH", UML_SUBARCH);
+            }
 
             arch_kconfigs.push(LinuxKconfig {
                 arch_config_option: Some(arch_dir_to_config(&arch_dir)),
