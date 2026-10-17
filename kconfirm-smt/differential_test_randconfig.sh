@@ -13,10 +13,12 @@
 #
 # usage (from kconfirm-smt/):
 #   bash generate_random_seeds.sh 2000 > random-seeds.txt
-#   bash differential_test_randconfig.sh [RUNS] [SEEDS_FILE]
+#   bash differential_test_randconfig.sh [RUNS] [SEEDS_FILE] [SOLVER_TIMEOUT_MS]
 #
 # Uses the first RUNS seeds in file order, including duplicates.
-# Defaults: RUNS=1000, SEEDS_FILE=random-seeds.txt (or $SEEDS_FILE).
+# Defaults: RUNS=1000, SEEDS_FILE=random-seeds.txt (or $SEEDS_FILE),
+# SOLVER_TIMEOUT_MS=0 (no timeout). Solver invocation runtimes are saved in
+# nanoseconds in each iteration's runtime.txt, including timed-out checks.
 #
 # environment:
 #   LINUX   kernel source tree      (default: evaluation/linux-randconfig)
@@ -33,10 +35,11 @@ ARCH="${ARCH:-x86_64}"
 
 RUNS="${1:-1000}"
 SEEDS_FILE="${2:-${SEEDS_FILE:-random-seeds.txt}}"
+SOLVER_TIMEOUT_MS="${3:-${SOLVER_TIMEOUT_MS:-0}}"
 
 # Load once so both directions can reuse exactly the same recorded seed list.
-if [ "$#" -gt 2 ]; then
-    echo "usage: $0 [RUNS] [SEEDS_FILE]" >&2
+if [ "$#" -gt 3 ]; then
+    echo "usage: $0 [RUNS] [SEEDS_FILE] [SOLVER_TIMEOUT_MS]" >&2
     exit 2
 fi
 if [ ! -f "$SEEDS_FILE" ] || [ ! -r "$SEEDS_FILE" ]; then
@@ -143,6 +146,7 @@ printf '%s\n' "${seeds[@]:0:RUNS}" > "$RESULTS_DIR/seeds.txt" || exit 2
 
     echo "runs:"
     echo "$RUNS"
+    echo "solver timeout ms: $SOLVER_TIMEOUT_MS"
 
     echo "seed source: $SEEDS_FILE"
     echo "selected seeds: $RESULTS_DIR/seeds.txt"
@@ -163,6 +167,7 @@ printf '%s\n' "${seeds[@]:0:RUNS}" > "$RESULTS_DIR/seeds.txt" || exit 2
 if ! ARCH="$ARCH" "$BINARY" \
     --linux "$LINUX" \
     --output-smt-lib "$MODEL_FILE" \
+    --solver-timeout-ms "$SOLVER_TIMEOUT_MS" \
     --dump-preproc "$PREPROC_FILE" \
     > "$RESULTS_DIR/model.log" 2>&1 || [ ! -s "$MODEL_FILE" ] || [ ! -s "$PREPROC_FILE" ]; then
     echo "error: model generation failed; see $RESULTS_DIR/model.log" >&2
@@ -176,13 +181,20 @@ fi
 
 pass=0
 fail=0
+timeouts=0
 
 
 for i in $(seq 1 "$RUNS"); do
 
     seed="${seeds[i - 1]}"
 
-    cfg="$(mktemp --suffix=.config)"
+    iteration_name="$(printf '%06d-seed%s' "$i" "$seed")"
+    iteration_dir="$ITERATIONS_DIR/$iteration_name"
+    mkdir -p "$iteration_dir" || exit 2
+    rm -f "$iteration_dir/status.txt" "$iteration_dir/randconfig.config" \
+        "$iteration_dir/runtime.txt" || exit 2
+
+    cfg="$(mktemp)" || exit 2
 
 
     # Generate Linux randconfig
@@ -192,12 +204,6 @@ for i in $(seq 1 "$RUNS"); do
         make -C "$LINUX" ARCH="$ARCH" randconfig 2>&1
     )"
     randconfig_status=$?
-
-    iteration_name="$(printf "%06d-seed%s" "$i" "${seed:-unknown}")"
-    iteration_dir="$ITERATIONS_DIR/$iteration_name"
-
-    mkdir -p "$iteration_dir"
-
 
     printf '%s\n' "${seed:-unknown}" \
         > "$iteration_dir/seed.txt"
@@ -238,11 +244,18 @@ for i in $(seq 1 "$RUNS"); do
 
 
     # Load the saved base model and add only this iteration's inputs.
-    if ARCH="$ARCH" "$BINARY" \
+    start_ns=$(date +%s%N)
+    ARCH="$ARCH" "$BINARY" \
         --load-model "$MODEL_FILE" \
         --add-config-constraints "$cfg" \
+        --solver-timeout-ms "$SOLVER_TIMEOUT_MS" \
         > "$iteration_dir/kconfirm.log" 2>&1
-    then
+    model_status=$?
+    end_ns=$(date +%s%N)
+    printf '%s\n' "$((end_ns - start_ns))" > "$iteration_dir/runtime.txt"
+    printf '%s\n' "$model_status" > "$iteration_dir/kconfirm.exit-status"
+
+    if (( model_status == 0 )); then
 
         pass=$((pass + 1))
 
@@ -251,7 +264,13 @@ for i in $(seq 1 "$RUNS"); do
 
         echo "[$i/$RUNS] SAT (seed ${seed:-unknown})"
 
-    elif grep -q 'solver result: Unsat' "$iteration_dir/kconfirm.log"; then
+    elif grep -qi 'solver returned unknown' "$iteration_dir/kconfirm.log"; then
+        timeouts=$((timeouts + 1))
+        echo "TIMEOUT" > "$iteration_dir/status.txt"
+        echo "[$i/$RUNS] TIMEOUT (seed $seed)"
+
+    elif (( model_status == 1 )) &&
+         grep -qi 'solver result: Unsat' "$iteration_dir/kconfirm.log"; then
 
         fail=$((fail + 1))
 
@@ -259,7 +278,7 @@ for i in $(seq 1 "$RUNS"); do
             > "$iteration_dir/status.txt"
 
 
-        kept="$FAILURES_DIR/randconfig-${seed:-run$i}"
+        kept="$FAILURES_DIR/randconfig-$iteration_name"
 
         cp "$cfg" \
             "$kept.config"
@@ -292,12 +311,15 @@ done
     git -C "$LINUX" rev-parse HEAD 2>/dev/null || echo "unknown"
     echo
     echo "total runs: $RUNS"
+    echo "solver timeout ms: $SOLVER_TIMEOUT_MS"
     echo "sat: $pass"
     echo "unsat: $fail"
+    echo "timeouts: $timeouts"
     echo "model constraints: $MODEL_FILE"
     echo "preprocessed macros: $PREPROC_FILE"
 
 } | tee "$RESULTS_DIR/run.log"
 
 
-[ "$fail" -eq 0 ]
+# Timed-out runs are inconclusive, so they still prevent a successful exit.
+[[ "$fail" -eq 0 && "$timeouts" -eq 0 ]]
