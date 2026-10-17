@@ -47,7 +47,7 @@ for index in "${!seeds[@]}"; do
     fi
 done
 
-LINUX_REPO="http://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+LINUX_REPO="git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
 LINUX_BRANCH="v7.2.10"
 MACRO_CACHE="${MACRO_CACHE:-}"
 RESULTS_DIR="${RESULTS_DIR:-reverse-differential-results}"
