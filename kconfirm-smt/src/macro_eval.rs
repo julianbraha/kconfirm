@@ -200,6 +200,7 @@ impl MacroEvaluator {
             value
         };
 
+        var("PYTHON3", "python3");
         let rustc = var("RUSTC", "rustc");
         var("CLANG_FLAGS", "");
         var("USERCFLAGS", "");
