@@ -1,5 +1,22 @@
 {
   "nodes": {
+    "kmax": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787061832,
+        "narHash": "sha256-eEceT7OE39SbBPpeH2jMPh3MmF/lLVMoOl+ug+2JPbQ=",
+        "owner": "paulgazz",
+        "repo": "kmax",
+        "rev": "2880e6c99cecb828761e65e53cb9752cd74a8ada",
+        "type": "github"
+      },
+      "original": {
+        "owner": "paulgazz",
+        "ref": "v4.10",
+        "repo": "kmax",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1791594108,
@@ -18,6 +35,7 @@
     },
     "root": {
       "inputs": {
+        "kmax": "kmax",
         "nixpkgs": "nixpkgs"
       }
     }
