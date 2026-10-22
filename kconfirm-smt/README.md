@@ -104,13 +104,17 @@ Compile `kconfirm-smt` (with Rust and z3 installed):
 cargo build --release -p kconfirm-smt
 ```
 
-Construct the model and output its formula as SMT-LIB2:
+Construct the model and output its constraints as SMT-LIB2:
 ```
+# NOTE: this binary path is relative to the repo root 
 ./target/release/kconfirm-smt --linux INPUT_PATH --output-smt-lib CONSTRAINTS_FILE.smt2
 ```
 
 Pass a partial .config file to add as constraints on the model:
 ```
+# optional: compile with the `debug` feature to see the unsat core
+cargo build -p kconfirm-smt --release --features debug
+
 ./target/release/kconfirm-smt --linux INPUT_PATH --add-constraints CONFIG_FRAGMENT
 ```
 
