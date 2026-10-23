@@ -47,7 +47,7 @@ for index in "${!seeds[@]}"; do
     fi
 done
 
-LINUX_REPO="http://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+LINUX_REPO="git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
 LINUX_BRANCH="v7.2.10"
 MACRO_CACHE="${MACRO_CACHE:-}"
 RESULTS_DIR="${RESULTS_DIR:-reverse-differential-results}"
@@ -178,7 +178,9 @@ worker() {
                 status="MODEL_FAILED"
             fi
             printf '%s\n' "$status" > "$iteration_dir/status.txt"
-            cp "$iteration_dir/model.log" "$FAILURES_DIR/model-${iteration_name}.log"
+            if [[ "$status" != "TIMEOUT" ]]; then
+                cp "$iteration_dir/model.log" "$FAILURES_DIR/model-${iteration_name}.log"
+            fi
             echo "[$i/$RUNS] $status (seed $seed)"
             rm -rf "$work"
             continue
@@ -229,6 +231,7 @@ done
 pass=0
 fail=0
 model_fail=0
+timeouts=0
 for ((i = 1; i <= RUNS; i++)); do
     seed="${seeds[i - 1]}"
     iteration_name=$(printf '%06d-seed%s' "$i" "$seed")
@@ -238,7 +241,8 @@ for ((i = 1; i <= RUNS; i++)); do
     case "$status" in
         SUCCESS) ((pass += 1)) ;;
         CHANGED) ((fail += 1)) ;;
-        MODEL_FAILED|TIMEOUT) ((model_fail += 1)); ((fail += 1)) ;;
+        TIMEOUT) ((timeouts += 1)) ;;
+        MODEL_FAILED) ((model_fail += 1)); ((fail += 1)) ;;
         *) ((model_fail += 1)); ((fail += 1)) ;;
     esac
 done
@@ -253,9 +257,11 @@ done
     echo "successes: $pass"
     echo "failures: $fail"
     echo "model failures: $model_fail"
+    echo "timeouts: $timeouts"
     echo "model constraints: $MODEL_FILE"
     echo "preprocessed macros: $PREPROC_FILE"
     echo "macro input: ${MACRO_CACHE:-fresh evaluation}"
 } | tee "$RESULTS_DIR/run.log"
 
-[[ "$fail" -eq 0 && "$worker_error" -eq 0 ]]
+# Timed-out runs are inconclusive, so they still prevent a successful exit.
+[[ "$fail" -eq 0 && "$timeouts" -eq 0 && "$worker_error" -eq 0 ]]
