@@ -8,9 +8,53 @@ An SMT encoding of Kconfig that supports all of the language.
 
 May be used as a standalone package from the `kconfirm` analzyer for other use cases.
 
+## Architecture
+
+```mermaid
+flowchart LR
+    inputs["Linux source"]
+
+    subgraph supporting[" "]
+        normalize_in@{ shape: anchor }
+        style normalize_in fill:none,stroke:none
+        subgraph desugar["kconfirm-desugar"]
+            normalize["Desugar Kconfig"]
+        end
+
+        subgraph z3ternary["z3-ternary"]
+            ternary["Tristate operations"]
+        end
+    end
+    style supporting fill:none,stroke:none
+
+    subgraph smt["kconfirm-smt"]
+        parse["Parse Kconfig"]
+        preprocess["Preprocess macros"]
+        encode["Generate SMT constraints"]
+        render["Render .config file"]
+    end
+
+    subgraph exported[" "]
+        export["SMT-LIB2 file"]
+    end
+    style exported fill:none,stroke:none
+
+    inputs --> parse
+    parse --> preprocess
+    preprocess --- normalize_in --> normalize --> encode
+    encode --> ternary
+    encode --> export
+    encode --> solver["Z3 solver"]
+    ternary --> solver
+    solver --> checks["SAT / UNSAT / UNKNOWN"]
+    solver -->|Satisfying assignment| render
+    render --> witness[".config witness"]
+```
+
 E.g.:
 - **Kconfig `string` is an SMT string.**
-- **Kconfig `int` and `hex` are SMT integers.**
+- **Kconfig `int` and `hex` are SMT integers**, bounded to signed and unsigned
+  64-bit values respectively.
 - Kconfig `tristate` is 2 booleans (order-encoding).
 - Kconfig `bool` is also 2 booleans for comparison with tristates.
 - Select's override of dependencies is supported: 
@@ -60,13 +104,17 @@ Compile `kconfirm-smt` (with Rust and z3 installed):
 cargo build --release -p kconfirm-smt
 ```
 
-Construct the model and output its formula as SMT-LIB2:
+Construct the model and output its constraints as SMT-LIB2:
 ```
+# NOTE: this binary path is relative to the repo root 
 ./target/release/kconfirm-smt --linux INPUT_PATH --output-smt-lib CONSTRAINTS_FILE.smt2
 ```
 
 Pass a partial .config file to add as constraints on the model:
 ```
+# optional: compile with the `debug` feature to see the unsat core
+cargo build -p kconfirm-smt --release --features debug
+
 ./target/release/kconfirm-smt --linux INPUT_PATH --add-constraints CONFIG_FRAGMENT
 ```
 
